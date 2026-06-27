@@ -1,9 +1,7 @@
 import WeddingInvitation from "./WeddingInvitation";
+import GuestQrCodes from "./GuestQrCodes";
 
 export default function App() {
-  // Optional: pull guest name from URL query e.g. ?to=Rio
-  const params = new URLSearchParams(window.location.search);
-  const guestName = params.get("to") || "";
-
-  return <WeddingInvitation guestName={guestName} />;
+  const isAdminPage = window.location.pathname === "/admin-qr";
+  return isAdminPage ? <GuestQrCodes /> : <WeddingInvitation />;
 }
