@@ -1,8 +1,7 @@
 import { useState, useRef } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 
-// 🔧 Update this once you've deployed (step 4 below).
-const SITE_URL = "https://REPLACE-WITH-YOUR-DEPLOYED-URL.vercel.app";
+const SITE_URL = "https://wedding-invitation-taupe-seven-44.vercel.app";
 
 function GuestCard({ name }) {
   const canvasWrapperRef = useRef(null);
