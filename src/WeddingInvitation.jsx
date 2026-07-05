@@ -1,37 +1,30 @@
 import { useState, useEffect, useRef } from "react";
-import { FaInstagram, FaMapMarkerAlt, FaVolumeUp, FaVolumeMute, FaHeart, FaHome, FaUserFriends, FaCalendarAlt, FaEnvelopeOpenText, FaLandmark } from "react-icons/fa";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import {
+  FaInstagram, FaMapMarkerAlt, FaVolumeUp, FaVolumeMute, FaHeart,
+  FaHome, FaUserFriends, FaCalendarAlt, FaEnvelopeOpenText, FaLandmark,
+} from "react-icons/fa";
 
 import pamsPhoto from "./assets/pams.jpeg";
 import bizzerPhoto from "./assets/Bizzer.jpeg";
 
 /**
- * Wedding Invitation — "WedWebs" style template
- * Sage green / cream / gold aesthetic, vertical mobile-first scroll story.
- * Opens with a textured-envelope + wax-seal + 3D flap-open animation.
+ * Wedding Invitation — refined "WedWebs" style.
+ * Install framer-motion:  npm i framer-motion
  *
- * Replace the placeholder content below (COUPLE, EVENT, GALLERY, WISHES, IMAGES)
- * with your own details and image imports.
- *
- * ⚠️ PHOTO URLS: use real, permanent links only. Never use a
- * "blob:..." URL copied from a browser tab (e.g. WhatsApp Web) —
- * those are temporary and only exist inside that one browser
- * session. They will be broken for every visitor, every time.
- * Use an image from your own /public folder, or upload to a host
- * like imgbb.com / Cloudinary and use the link it gives you.
- *
- * 👤 GUEST NAME: this page can be greeted to a specific guest two
- * ways — either pass a `guestName` prop directly, OR (this is the
- * one that matters once you're sharing per-guest QR codes) visit
- * the URL with `?guest=SomeName` on the end, e.g.:
- *
- *   https://yoursite.com/?guest=John
- *
- * The component reads that automatically below and shows
- * "Dear, John" without you wiring anything else up per guest.
+ * Upgrades vs. the previous version:
+ *  • Framer Motion throughout — soft reveals, staggered children, parallax.
+ *  • Finer typography: Cormorant Garamond display + Cormorant italic accents
+ *    + Jost body. Tighter tracking, more air.
+ *  • Refined envelope: layered paper, embossed monogram, glowing wax seal,
+ *    smoother 3D flap easing, letter rises with a gentle spring.
+ *  • Softer palette + subtle grain, gold hairlines, arch frames w/ inner ring.
+ *  • Parallax hero, animated countdown flip, hover-lift on cards.
+ *  • Same data + RSVP behavior.
  */
 
 // ─────────────────────────────────────────────────────────
-// 🔧 EDIT THIS DATA — your wedding details
+// DATA
 // ─────────────────────────────────────────────────────────
 const COUPLE = {
   hashtag: "#BIZZERPAMSWEDDING",
@@ -47,82 +40,98 @@ const COUPLE = {
     fullName: "Paloma Austin",
     parents: ["Mr. Budi Dharma", "Mrs. Susan Dharma"],
     instagram: "https://instagram.com/",
-    // 🔧 Replace this — see the warning at the top of this file about
-    // why a "blob:" URL (e.g. from WhatsApp Web) will never work here.
     photo: pamsPhoto,
   },
 };
 
 const EVENT = {
-  verse: "“So they are no longer two, but one flesh. Therefore what God has joined together, let no one separate.”",
-  verseRef: "(Matthew 19:6)",
+  verse:
+    "“So they are no longer two, but one flesh. Therefore what God has joined together, let no one separate.”",
+  verseRef: "Matthew 19:6",
   day: "SATURDAY",
   date: "21 OCTOBER 2026",
   ceremonyTime: "18.00 WIB",
   afterPartyTime: "21.00 WIB",
-  venueName: "Lausanne Ballroom Hotel Swissôtel PIK Jakarta",
-  venueAddress: "Jl. Pantai Indah Kapuk, Kamal Muara, Penjaringan, Jakarta Utara",
+  venueName: "Lausanne Ballroom — Swissôtel PIK Jakarta",
+  venueAddress:
+    "Jl. Pantai Indah Kapuk, Kamal Muara, Penjaringan, Jakarta Utara",
   mapsUrl: "https://maps.google.com",
-  // ISO datetime used for the live countdown
   weddingDateTimeISO: "2026-10-21T18:00:00+07:00",
 };
 
 const GALLERY = [
-  "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=600&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?q=80&w=600&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1606800052052-a08af7148866?q=80&w=600&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1532712938310-34cb3982ef74?q=80&w=600&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1606800052052-a08af7148866?q=80&w=800&auto=format&fit=crop",
+  "https://images.unsplash.com/photo-1532712938310-34cb3982ef74?q=80&w=800&auto=format&fit=crop",
 ];
 
 const HERO_VIDEO_POSTER =
-  "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?q=80&w=1200&auto=format&fit=crop";
+  "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?q=80&w=1400&auto=format&fit=crop";
 
-const BG_AMBIENT_MUSIC_URL = ""; // optional mp3 url
+const BG_AMBIENT_MUSIC_URL = "";
 
-// ─────────────────────────────────────────────────────────
-// 📬 RSVP delivery — see the note above WishesForm for why this
-// exists and what your two real options are (email vs. a database).
-// Sign up free at https://formspree.io, create a form there, and
-// paste the endpoint it gives you below. Until you do, submissions
-// only ever show up locally in the submitter's own browser.
-// ─────────────────────────────────────────────────────────
 const RSVP_EMAIL_ENDPOINT = "https://formspree.io/f/REPLACE_WITH_YOUR_FORM_ID";
 
 // ─────────────────────────────────────────────────────────
-// Global type + motion setup. Kept in one place (instead of
-// scattered Tailwind arbitrary-value classes) so it survives
-// regardless of how the host app's Tailwind build is configured.
+// Global styles + refined typography
 // ─────────────────────────────────────────────────────────
 function GlobalInviteStyles() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Jost:wght@300;400;500;600&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Jost:wght@300;400;500;600&display=swap');
 
-      .wi-root { font-family: 'Jost', sans-serif; }
-      .wi-root .font-serif { font-family: 'Playfair Display', Georgia, serif !important; }
+      .wi-root {
+        font-family: 'Jost', sans-serif;
+        font-weight: 300;
+        letter-spacing: 0.01em;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wi-root .font-serif {
+        font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif !important;
+        font-weight: 400;
+      }
+      .wi-grain {
+        position: relative;
+      }
+      .wi-grain::after {
+        content: "";
+        position: absolute; inset: 0;
+        pointer-events: none;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.4  0 0 0 0 0.35  0 0 0 0 0.2  0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+        mix-blend-mode: multiply;
+        opacity: 0.35;
+      }
+
+      .wi-goldline {
+        background: linear-gradient(90deg, transparent, #c9a14a 20%, #e6cd8a 50%, #c9a14a 80%, transparent);
+      }
 
       @keyframes wi-tap-bob {
-        0%, 100% { transform: translateY(0); }
+        0%,100% { transform: translateY(0); }
         50% { transform: translateY(4px); }
       }
       @keyframes wi-tap-ripple {
         0% { transform: scale(0.55); opacity: 0.85; }
         100% { transform: scale(1.9); opacity: 0; }
       }
+      @keyframes wi-seal-glow {
+        0%,100% { box-shadow: 0 6px 14px rgba(0,0,0,0.32), inset 0 2px 3px rgba(255,255,255,0.35), 0 0 0 rgba(201,161,74,0); }
+        50%     { box-shadow: 0 6px 14px rgba(0,0,0,0.32), inset 0 2px 3px rgba(255,255,255,0.35), 0 0 22px rgba(201,161,74,0.55); }
+      }
       .wi-tap-icon { animation: wi-tap-bob 1.6s ease-in-out infinite; }
       .wi-tap-ripple { animation: wi-tap-ripple 1.6s ease-out infinite; }
+      .wi-seal { animation: wi-seal-glow 2.6s ease-in-out infinite; }
 
       @media (prefers-reduced-motion: reduce) {
-        .wi-tap-icon, .wi-tap-ripple { animation: none; }
+        .wi-tap-icon, .wi-tap-ripple, .wi-seal { animation: none; }
       }
     `}</style>
   );
 }
 
 // ─────────────────────────────────────────────────────────
-// Decorative floral corner — pure SVG, no external assets.
-// tone="gold" gives the lighter gold-on-cream look used on the
-// envelope cover; tone="sage" (default) is used everywhere else.
+// Decorative floral corner
 // ─────────────────────────────────────────────────────────
 function FloralCorner({ className = "", flip = false, tone = "sage" }) {
   const c =
@@ -131,21 +140,23 @@ function FloralCorner({ className = "", flip = false, tone = "sage" }) {
       : { line: "#7c8a5e", petal: "#eef1e6", petalStroke: "#bcc7a3", dot: "#c9a14a" };
   return (
     <svg
-      viewBox="0 0 200 200"
-      className={`pointer-events-none select-none ${className} ${flip ? "-scale-x-100" : ""}`}
-      fill="none"
+      viewBox="0 0 180 180"
+      className={className}
+      style={{ transform: flip ? "scaleX(-1)" : undefined }}
+      aria-hidden
     >
-      <g opacity="0.85">
-        <path d="M20 180 Q40 120 90 100 Q140 80 160 30" stroke={c.line} strokeWidth="2" fill="none" />
+      <g fill="none" stroke={c.line} strokeWidth="1.1" strokeLinecap="round">
+        <path d="M20 160 C 60 150, 100 110, 140 60" />
+        <path d="M30 160 C 70 140, 110 100, 150 40" opacity="0.55" />
         {[
           [40, 150], [55, 130], [70, 115], [90, 105], [110, 95], [130, 75], [145, 55],
         ].map(([cx, cy], i) => (
-          <g key={i} transform={`translate(${cx},${cy}) rotate(${i * 12})`}>
-            <ellipse cx="0" cy="0" rx="9" ry="14" fill={c.petal} stroke={c.petalStroke} strokeWidth="0.5" />
-            <ellipse cx="0" cy="0" rx="3" ry="4" fill={c.dot} opacity="0.55" />
+          <g key={i}>
+            <circle cx={cx} cy={cy} r="6" fill={c.petal} stroke={c.petalStroke} strokeWidth="0.8" />
+            <circle cx={cx} cy={cy} r="1.6" fill={c.dot} />
           </g>
         ))}
-        <circle cx="150" cy="35" r="5" fill={c.dot} opacity="0.7" />
+        <circle cx="150" cy="40" r="2" fill={c.dot} />
       </g>
     </svg>
   );
@@ -153,33 +164,42 @@ function FloralCorner({ className = "", flip = false, tone = "sage" }) {
 
 function SectionDivider({ symbol = "&" }) {
   return (
-    <div className="flex items-center justify-center gap-4 py-8">
-      <span className="h-px w-12" style={{ backgroundColor: "rgba(154,165,126,0.5)" }} />
-      <span className="font-serif italic text-2xl" style={{ color: "#5c6b45" }}>{symbol}</span>
-      <span className="h-px w-12" style={{ backgroundColor: "rgba(154,165,126,0.5)" }} />
-    </div>
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.6 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+      className="my-12 flex items-center justify-center gap-4"
+    >
+      <span className="h-px w-16 wi-goldline" />
+      <span className="font-serif italic text-2xl" style={{ color: "#c9a14a" }}>{symbol}</span>
+      <span className="h-px w-16 wi-goldline" />
+    </motion.div>
   );
 }
 
-// A tiny inline SVG used as a graceful fallback whenever a photo
-// URL is broken (e.g. an expired "blob:" link) — so guests see a
-// soft placeholder instead of a blank/broken image box.
+// Fallback photo
 const FALLBACK_PHOTO =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400">
-       <rect width="100%" height="100%" fill="#dde3cb"/>
-       <text x="50%" y="50%" font-family="sans-serif" font-size="20" fill="#5c6b45" text-anchor="middle" dy=".3em">Photo</text>
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'>
+       <rect width='100%' height='100%' fill='#efe9d7'/>
+       <text x='50%' y='50%' text-anchor='middle' fill='#a99a70' font-family='Georgia' font-size='22' font-style='italic'>Photo</text>
      </svg>`
   );
 
-function ArchFrame({ src, alt, className = "" }) {
+// Arch frame with inner gold hairline
+function ArchFrame({ src, alt, className = "", delay = 0 }) {
   return (
-    <div
-      className={`relative overflow-hidden shadow-xl ${className}`}
+    <motion.div
+      initial={{ opacity: 0, y: 24, scale: 0.98 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay }}
+      className={`relative overflow-hidden ${className}`}
       style={{
-        borderRadius: "999px 999px 12px 12px",
-        border: "1px solid #d8cfb8",
+        borderRadius: "9999px 9999px 8px 8px",
+        boxShadow: "0 20px 40px -20px rgba(60,50,20,0.35)",
       }}
     >
       <img
@@ -187,11 +207,20 @@ function ArchFrame({ src, alt, className = "" }) {
         alt={alt}
         className="h-full w-full object-cover"
         onError={(e) => {
-          e.currentTarget.onerror = null; // avoid loop if the fallback itself ever fails
+          e.currentTarget.onerror = null;
           e.currentTarget.src = FALLBACK_PHOTO;
         }}
       />
-    </div>
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-2"
+        style={{
+          borderRadius: "9999px 9999px 6px 6px",
+          border: "1px solid rgba(255, 246, 220, 0.55)",
+          boxShadow: "inset 0 0 0 1px rgba(201,161,74,0.35)",
+        }}
+      />
+    </motion.div>
   );
 }
 
@@ -200,15 +229,14 @@ function ArchFrame({ src, alt, className = "" }) {
 // ─────────────────────────────────────────────────────────
 function useCountdown(targetISO) {
   const [time, setTime] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-
   useEffect(() => {
     const target = new Date(targetISO).getTime();
     const tick = () => {
       const diff = Math.max(0, target - Date.now());
       setTime({
-        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
-        minutes: Math.floor((diff / (1000 * 60)) % 60),
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff / 3600000) % 24),
+        minutes: Math.floor((diff / 60000) % 60),
         seconds: Math.floor((diff / 1000) % 60),
       });
     };
@@ -216,26 +244,47 @@ function useCountdown(targetISO) {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [targetISO]);
-
   return time;
 }
 
 function CountdownBlock({ value, label }) {
+  const str = String(value).padStart(2, "0");
   return (
     <div className="flex flex-col items-center">
       <div
-        className="flex h-14 w-14 items-center justify-center rounded-xl text-xl font-semibold shadow-sm sm:h-16 sm:w-16 sm:text-2xl"
-        style={{ border: "1px solid #cabf9e", backgroundColor: "#fbf8f0", color: "#5c6b45" }}
+        className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl"
+        style={{
+          background: "linear-gradient(160deg, #ffffff 0%, #f2ecda 100%)",
+          border: "1px solid #d9cfac",
+          boxShadow: "0 8px 20px -10px rgba(60,50,20,0.25), inset 0 1px 0 rgba(255,255,255,0.8)",
+        }}
       >
-        {String(value).padStart(2, "0")}
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.span
+            key={str}
+            initial={{ y: -22, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 22, opacity: 0 }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            className="font-serif text-2xl"
+            style={{ color: "#3f4632" }}
+          >
+            {str}
+          </motion.span>
+        </AnimatePresence>
       </div>
-      <span className="mt-1.5 text-[10px] uppercase tracking-widest" style={{ color: "#7c8a5e" }}>{label}</span>
+      <span
+        className="mt-2 text-[10px] uppercase"
+        style={{ letterSpacing: "0.25em", color: "#8d8463" }}
+      >
+        {label}
+      </span>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────
-// Bottom nav (matches the 4-icon dock in the reference video)
+// Bottom nav
 // ─────────────────────────────────────────────────────────
 function BottomNav({ active, onNavigate }) {
   const items = [
@@ -245,56 +294,60 @@ function BottomNav({ active, onNavigate }) {
     { id: "rsvp", icon: FaEnvelopeOpenText, label: "RSVP" },
   ];
   return (
-    <nav
-      className="fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md items-center justify-between px-8 py-3 backdrop-blur"
-      style={{ borderTop: "1px solid #e3dcc9", backgroundColor: "rgba(253,251,244,0.95)" }}
+    <motion.nav
+      initial={{ y: 60, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ delay: 0.6, duration: 0.7, ease: "easeOut" }}
+      className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 gap-2 rounded-full px-3 py-2 backdrop-blur"
+      style={{
+        background: "rgba(255,253,244,0.9)",
+        border: "1px solid #e3d9b9",
+        boxShadow: "0 12px 30px -12px rgba(60,50,20,0.35)",
+      }}
     >
       {items.map((item) => {
         const Icon = item.icon;
+        const isActive = active === item.id;
         return (
           <button
             key={item.id}
             onClick={() => onNavigate(item.id)}
-            className="flex flex-col items-center gap-1 text-[10px] transition"
-            style={{ color: active === item.id ? "#5c6b45" : "#a9a08a" }}
+            className="relative flex flex-col items-center gap-0.5 rounded-full px-3 py-1.5 text-[10px] transition"
+            style={{ color: isActive ? "#fff" : "#8a7d5a" }}
           >
-            <Icon size={16} />
-            {item.label}
+            {isActive && (
+              <motion.span
+                layoutId="nav-pill"
+                className="absolute inset-0 rounded-full"
+                style={{ background: "linear-gradient(135deg, #5c6b45, #7c8a5e)" }}
+                transition={{ type: "spring", stiffness: 400, damping: 32 }}
+              />
+            )}
+            <Icon size={14} className="relative" />
+            <span className="relative">{item.label}</span>
           </button>
         );
       })}
-    </nav>
+    </motion.nav>
   );
 }
 
 // ─────────────────────────────────────────────────────────
 // RSVP form
-//
-// This intentionally has no public "wall" of past messages —
-// every submission is sent privately via RSVP_EMAIL_ENDPOINT
-// (a free Formspree form — see the constant near the top of this
-// file) so every RSVP lands straight in your inbox. Nothing is
-// displayed back on the page, and nothing is stored in a shared
-// database, so guests never see each other's responses.
 // ─────────────────────────────────────────────────────────
 function WishesForm() {
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
   const [attending, setAttending] = useState("yes");
-  const [status, setStatus] = useState("idle"); // idle | sending | sent | error
+  const [status, setStatus] = useState("idle");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim() || !message.trim()) return;
-
     if (RSVP_EMAIL_ENDPOINT.includes("REPLACE_WITH_YOUR_FORM_ID")) {
-      console.warn(
-        "RSVP_EMAIL_ENDPOINT is still a placeholder — this RSVP was not sent anywhere. Set up a free form at https://formspree.io and paste the endpoint in."
-      );
       setStatus("error");
       return;
     }
-
     setStatus("sending");
     try {
       const res = await fetch(RSVP_EMAIL_ENDPOINT, {
@@ -302,43 +355,48 @@ function WishesForm() {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ name, attending, message }),
       });
-      if (res.ok) {
-        setStatus("sent");
-        setName("");
-        setMessage("");
-      } else {
-        setStatus("error");
-      }
-    } catch {
-      setStatus("error");
-    }
+      if (res.ok) { setStatus("sent"); setName(""); setMessage(""); }
+      else setStatus("error");
+    } catch { setStatus("error"); }
   };
 
   return (
-    <div className="px-6 pb-10">
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-4 rounded-2xl p-5"
-        style={{ border: "1px solid #dcd4ba", backgroundColor: "#fbf8f0" }}
-      >
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: 0.8 }}
+      className="mx-6 rounded-2xl px-6 py-8"
+      style={{
+        background: "linear-gradient(180deg, #fbf7e8 0%, #f3ecd6 100%)",
+        border: "1px solid #e3d9b9",
+        boxShadow: "0 20px 40px -25px rgba(60,50,20,0.4)",
+      }}
+    >
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-widest" style={{ color: "#7c8a5e" }}>Your Name</label>
+          <label className="text-[10px] uppercase" style={{ letterSpacing: "0.25em", color: "#8d8463" }}>
+            Your Name
+          </label>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full bg-transparent pb-2 text-sm outline-none"
+            className="mt-1 w-full bg-transparent pb-2 text-sm outline-none"
             style={{ borderBottom: "1px solid #bcb497", color: "#3f4632" }}
             placeholder="Full name"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-widest" style={{ color: "#7c8a5e" }}>Will you attend?</label>
-          <div className="flex gap-3">
+          <label className="text-[10px] uppercase" style={{ letterSpacing: "0.25em", color: "#8d8463" }}>
+            Will you attend?
+          </label>
+          <div className="mt-2 flex gap-2">
             {["yes", "maybe", "no"].map((opt) => (
-              <button
+              <motion.button
                 type="button"
                 key={opt}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setAttending(opt)}
                 className="flex-1 rounded-full px-3 py-1.5 text-xs capitalize transition"
                 style={
@@ -348,55 +406,62 @@ function WishesForm() {
                 }
               >
                 {opt}
-              </button>
+              </motion.button>
             ))}
           </div>
         </div>
 
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-widest" style={{ color: "#7c8a5e" }}>
-            Say something for our wedding <span style={{ color: "#fb7185" }}>*</span>
+          <label className="text-[10px] uppercase" style={{ letterSpacing: "0.25em", color: "#8d8463" }}>
+            Say something for our wedding *
           </label>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={3}
-            className="w-full resize-none bg-transparent pb-2 text-sm outline-none"
+            className="mt-1 w-full resize-none bg-transparent pb-2 text-sm outline-none"
             style={{ borderBottom: "1px solid #bcb497", color: "#3f4632" }}
             placeholder="Write your wishes..."
           />
         </div>
 
-        <button
+        <motion.button
           type="submit"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           disabled={status === "sending"}
-          className="w-full rounded-full py-3 text-sm font-medium uppercase tracking-widest text-white shadow-md transition"
-          style={{ backgroundColor: "#5c6b45", opacity: status === "sending" ? 0.7 : 1 }}
+          className="w-full rounded-full py-3 text-xs uppercase text-white shadow-md"
+          style={{
+            letterSpacing: "0.25em",
+            background: "linear-gradient(135deg, #5c6b45 0%, #7c8a5e 100%)",
+            opacity: status === "sending" ? 0.7 : 1,
+          }}
         >
-          {status === "sending" ? "Sending…" : "Submit"}
-        </button>
+          {status === "sending" ? "Sending…" : "Send Wishes"}
+        </motion.button>
 
         {status === "sent" && (
-          <p className="text-center text-xs" style={{ color: "#5c6b45" }}>Thank you — your RSVP has been sent! 💌</p>
+          <p className="text-center text-xs" style={{ color: "#5c6b45" }}>
+            Thank you — your RSVP has been sent 💌
+          </p>
         )}
         {status === "error" && (
           <p className="text-center text-xs" style={{ color: "#b3543f" }}>
-            Couldn't send just now — please try again, or reach out to us directly.
+            Couldn't send just now — please try again.
           </p>
         )}
       </form>
-    </div>
+    </motion.div>
   );
 }
 
 // ─────────────────────────────────────────────────────────
-// Tap-to-open hint — small animated hand + ripple, used in place
-// of a literal button so the envelope itself feels tappable.
+// Tap hint
 // ─────────────────────────────────────────────────────────
 function TapHint({ label = "Tap to Open" }) {
   return (
     <div className="flex flex-col items-center" style={{ marginTop: 16 }}>
-      <span style={{ fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: "#9a8c63" }}>
+      <span style={{ fontSize: 10, letterSpacing: "0.35em", textTransform: "uppercase", color: "#9a8c63" }}>
         {label}
       </span>
       <div className="wi-tap-icon" style={{ position: "relative", width: 36, height: 36, marginTop: 10 }}>
@@ -419,252 +484,236 @@ function TapHint({ label = "Tap to Open" }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// Envelope cover / opening screen
-//
-// closed -> breaking (seal cracks) -> flapOpen (flap folds back)
-// -> cardOut (letter rises out of the envelope and stays there).
-//
-// onOpen() is now only ever called from the "View Full Invitation"
-// button inside the letter — there's no timer that auto-advances
-// past it, so the reader can actually read the letter at their own
-// pace instead of it flashing by and jumping into the full site.
-//
-// The mechanical envelope animation itself (breaking -> flapOpen
-// -> cardOut) is still driven by chained setTimeouts rather than
-// CSS `transitionend` events — that was the original stuck-button
-// bug. If a transition's classes ever fail to apply, transitionend
-// never fires; timers always complete regardless.
+// Cover / envelope screen — refined
 // ─────────────────────────────────────────────────────────
 function CoverScreen({ onOpen, guestName }) {
-  const [phase, setPhase] = useState("closed");
-  const timers = useRef([]);
+  const [phase, setPhase] = useState("closed"); // closed | flapOpen | cardOut
 
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+  const flapOpen = phase === "flapOpen" || phase === "cardOut";
+  const cardVisible = phase === "cardOut";
+  const sealBroken = phase !== "closed";
+  const monogram = `${COUPLE.groom.nickname[0]}${COUPLE.bride.nickname[0]}`;
 
   const handleOpenClick = () => {
     if (phase !== "closed") return;
-    setPhase("breaking");
-    timers.current.push(
-      setTimeout(() => {
-        setPhase("flapOpen");
-        timers.current.push(
-          setTimeout(() => {
-            setPhase("cardOut");
-            // No auto-advance from here — the reader decides when
-            // they're done reading the letter and taps through.
-          }, 900)
-        );
-      }, 420)
-    );
+    setPhase("flapOpen");
+    setTimeout(() => setPhase("cardOut"), 850);
   };
-
-  const sealBroken = phase !== "closed";
-  const flapOpen = phase === "flapOpen" || phase === "cardOut";
-  const cardVisible = phase === "cardOut";
-  const monogram = `${COUPLE.groom.nickname[0]}${COUPLE.bride.nickname[0]}`;
 
   const paperTexture = {
     backgroundImage:
-      "radial-gradient(circle at 18% 22%, rgba(255,255,255,0.7), transparent 55%), " +
+      "radial-gradient(circle at 18% 22%, rgba(255,255,255,0.75), transparent 55%), " +
       "repeating-linear-gradient(135deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 3px), " +
-      "linear-gradient(160deg, #fdfaf3 0%, #f3ecdb 100%)",
+      "linear-gradient(160deg, #fdfaf3 0%, #efe6cf 100%)",
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center px-6"
-      style={{ background: "radial-gradient(circle at 50% 16%, #f3f0e2 0%, #e7e3cf 55%, #dad6c0 100%)" }}
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, scale: 1.05 }}
+      transition={{ duration: 0.8 }}
+      className="fixed inset-0 z-50 flex items-center justify-center px-6 wi-grain"
+      style={{
+        background:
+          "radial-gradient(circle at 50% 16%, #f4f0df 0%, #e6e1c8 55%, #d5cfb4 100%)",
+      }}
     >
       <FloralCorner className="absolute left-0 top-0 h-32 w-32 opacity-80" tone="gold" />
       <FloralCorner className="absolute right-0 top-0 h-32 w-32 opacity-80" tone="gold" flip />
       <FloralCorner className="absolute bottom-0 left-0 h-32 w-32 -scale-y-100 opacity-80" tone="gold" flip />
       <FloralCorner className="absolute bottom-0 right-0 h-32 w-32 -scale-y-100 opacity-80" tone="gold" />
 
-      {/* Envelope */}
-      <div
+      <motion.div
+        initial={{ y: 30, opacity: 0, scale: 0.95 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
         role="button"
         tabIndex={0}
         onClick={handleOpenClick}
         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleOpenClick()}
         className="relative"
         style={{
-          height: 540,
-          width: 320,
+          height: 560,
+          width: 330,
           perspective: "1800px",
           cursor: phase === "closed" ? "pointer" : "default",
         }}
       >
-        {/* Envelope body (pocket) */}
+        {/* Envelope pocket */}
         <div
           className="absolute inset-0 overflow-hidden"
-          style={{ borderRadius: 14, border: "1px solid #d9cfac", boxShadow: "0 25px 55px rgba(40,32,12,0.22)", ...paperTexture }}
+          style={{
+            borderRadius: 16,
+            border: "1px solid #d9cfac",
+            boxShadow:
+              "0 30px 60px -18px rgba(40,32,12,0.35), inset 0 0 0 1px rgba(255,246,220,0.5)",
+            ...paperTexture,
+          }}
         >
-          {/* Letter — rises up out of the pocket once the flap is open.
-              No timer moves past this; the reader taps through when ready. */}
-          <div
+          {/* Letter */}
+          <motion.div
+            initial={false}
+            animate={
+              cardVisible
+                ? { y: 0, opacity: 1 }
+                : { y: 40, opacity: 0 }
+            }
+            transition={{ type: "spring", stiffness: 90, damping: 18, delay: cardVisible ? 0.15 : 0 }}
             className="absolute inset-x-5 flex flex-col items-center px-6 text-center"
             style={{
-              top: "15%",
+              top: "13%",
               bottom: "5%",
-              borderRadius: 10,
+              borderRadius: 12,
               border: "1px solid #cdbf99",
               background: "linear-gradient(160deg, #fffdf7 0%, #f6efdd 100%)",
-              boxShadow: "0 12px 30px rgba(60,50,20,0.18)",
-              opacity: cardVisible ? 1 : 0,
-              transform: cardVisible ? "translateY(0)" : "translateY(36px)",
-              transition: "opacity 600ms ease, transform 650ms cubic-bezier(0.22,1,0.36,1)",
-              paddingTop: 28,
+              boxShadow:
+                "0 14px 34px rgba(60,50,20,0.2), inset 0 0 0 1px rgba(201,161,74,0.15)",
+              paddingTop: 30,
               paddingBottom: 22,
               justifyContent: "flex-start",
             }}
           >
-            <p style={{ fontSize: 9.5, letterSpacing: "0.32em", textTransform: "uppercase", color: "#9a8c63" }}>
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-3 rounded-md"
+              style={{ border: "1px solid rgba(201,161,74,0.35)" }}
+            />
+            <p style={{ fontSize: 9.5, letterSpacing: "0.35em", textTransform: "uppercase", color: "#9a8c63" }}>
               Together With Their Families
             </p>
 
-            <p className="font-serif italic" style={{ fontSize: 26, marginTop: 14, color: "#a9763c" }}>&amp;</p>
+            <p className="font-serif italic" style={{ fontSize: 28, marginTop: 12, color: "#a9763c" }}>&</p>
 
-            <h1 className="font-serif italic" style={{ fontSize: 25, marginTop: 8, color: "#3c4630", lineHeight: 1.25 }}>
-              {COUPLE.groom.nickname} &amp; {COUPLE.bride.nickname}
+            <h1
+              className="font-serif italic"
+              style={{ fontSize: 30, marginTop: 6, color: "#3c4630", lineHeight: 1.2, letterSpacing: "0.01em" }}
+            >
+              {COUPLE.groom.nickname} & {COUPLE.bride.nickname}
             </h1>
 
-            <div style={{ width: 32, height: 1, backgroundColor: "#cdb583", margin: "16px auto" }} />
+            <div className="wi-goldline" style={{ width: 60, height: 1, margin: "18px auto" }} />
 
-            <p style={{ fontSize: 12, color: "#5c5848", lineHeight: 1.6, maxWidth: 220 }}>
-              request the honour of your presence as we begin our forever
+            <p style={{ fontSize: 12.5, color: "#5c5848", lineHeight: 1.7, maxWidth: 230, fontStyle: "italic" }}>
+              request the honour of your presence
+              <br />as we begin our forever
             </p>
 
             {guestName && (
-              <p style={{ marginTop: 14, fontSize: 12, color: "#7a6c4c" }}>
+              <p style={{ marginTop: 14, fontSize: 12.5, color: "#7a6c4c", fontStyle: "italic" }}>
                 Dear, <span style={{ fontWeight: 500 }}>{guestName}</span>
               </p>
             )}
 
-            <p style={{ marginTop: 16, fontSize: 11, letterSpacing: "0.18em", color: "#8a7b53" }}>
+            <p style={{ marginTop: 16, fontSize: 11, letterSpacing: "0.22em", color: "#8a7b53" }}>
               {EVENT.date.toUpperCase()}
             </p>
 
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpen();
-              }}
+            <motion.button
+              whileHover={{ scale: 1.05, boxShadow: "0 14px 28px rgba(60,50,20,0.32)" }}
+              whileTap={{ scale: 0.96 }}
+              onClick={(e) => { e.stopPropagation(); onOpen(); }}
               style={{
-                marginTop: 24,
+                marginTop: 22,
                 borderRadius: 999,
-                padding: "11px 28px",
-                fontSize: 11,
-                letterSpacing: "0.2em",
+                padding: "12px 30px",
+                fontSize: 10.5,
+                letterSpacing: "0.28em",
                 textTransform: "uppercase",
                 fontWeight: 500,
                 color: "#fff",
-                background: "#5c6b45",
+                background: "linear-gradient(135deg, #5c6b45 0%, #7c8a5e 100%)",
                 border: "none",
                 boxShadow: "0 10px 22px rgba(60,50,20,0.25)",
                 cursor: "pointer",
                 opacity: cardVisible ? 1 : 0,
                 transform: cardVisible ? "translateY(0)" : "translateY(10px)",
-                transition: "opacity 500ms ease 450ms, transform 500ms ease 450ms",
+                transition: "opacity 500ms ease 450ms, transform 500ms ease 450ms, box-shadow 300ms",
               }}
             >
               View Full Invitation
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         </div>
 
-        {/* Flap — hinged at the top edge, folds backward open */}
-        <div
+        {/* Flap */}
+        <motion.div
+          initial={false}
+          animate={{ rotateX: flapOpen ? -172 : 0 }}
+          transition={{ duration: 1.1, ease: [0.6, 0, 0.35, 1] }}
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "62%",
-            transformOrigin: "top center",
-            transformStyle: "preserve-3d",
-            transform: flapOpen ? "rotateX(-168deg)" : "rotateX(0deg)",
-            transition: "transform 900ms cubic-bezier(0.6,0,0.35,1)",
-            zIndex: 2,
+            position: "absolute", top: 0, left: 0, width: "100%", height: "62%",
+            transformOrigin: "top center", transformStyle: "preserve-3d", zIndex: 2,
           }}
         >
           <div
             style={{
-              position: "absolute",
-              inset: 0,
+              position: "absolute", inset: 0,
               clipPath: "polygon(0 0, 100% 0, 50% 100%)",
               backfaceVisibility: "hidden",
-              border: "1px solid #d9cfac",
-              borderTop: "none",
-              boxShadow: "inset 0 -10px 18px -12px rgba(60,48,20,0.25)",
+              border: "1px solid #d9cfac", borderTop: "none",
+              boxShadow: "inset 0 -10px 22px -12px rgba(60,48,20,0.3)",
               ...paperTexture,
             }}
           />
-        </div>
+        </motion.div>
 
-        {/* Wax seal — sits on the seam, cracks open on tap */}
-        <div
+        {/* Wax seal */}
+        <motion.div
+          className="wi-seal"
+          initial={false}
+          animate={
+            sealBroken
+              ? { opacity: 0, scale: 1.6, rotate: 22 }
+              : { opacity: 1, scale: 1, rotate: 0 }
+          }
+          transition={{ duration: 0.45, ease: "easeOut" }}
           style={{
-            position: "absolute",
-            left: "50%",
-            top: "62%",
-            transform: `translate(-50%, -50%) ${sealBroken ? "scale(1.55) rotate(22deg)" : "scale(1) rotate(0deg)"}`,
-            opacity: sealBroken ? 0 : 1,
-            pointerEvents: sealBroken ? "none" : "auto",
-            transition: "opacity 380ms ease, transform 380ms ease",
-            zIndex: 3,
-            width: 62,
-            height: 62,
-            borderRadius: "50%",
-            background: "radial-gradient(circle at 35% 30%, #ecd9a8, #b9874a 75%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 5px 12px rgba(0,0,0,0.3), inset 0 2px 3px rgba(255,255,255,0.3)",
+            position: "absolute", left: "50%", top: "62%",
+            translateX: "-50%", translateY: "-50%",
+            pointerEvents: sealBroken ? "none" : "auto", zIndex: 3,
+            width: 66, height: 66, borderRadius: "50%",
+            background:
+              "radial-gradient(circle at 32% 28%, #f2dfa8, #c99251 60%, #8f5a25 100%)",
+            display: "flex", alignItems: "center", justifyContent: "center",
           }}
         >
-          <span style={{ fontFamily: "'Playfair Display', serif", fontStyle: "italic", fontSize: 20, color: "#fffdf6" }}>
+          <span
+            style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontStyle: "italic", fontSize: 22, color: "#fffdf6",
+              textShadow: "0 1px 1px rgba(0,0,0,0.35)",
+            }}
+          >
             {monogram}
           </span>
-        </div>
+        </motion.div>
 
-        {/* Guest line + tap hint, fades out once tapped */}
-        <div
+        {/* Guest line + tap hint */}
+        <motion.div
+          initial={false}
+          animate={{ opacity: phase === "closed" ? 1 : 0 }}
+          transition={{ duration: 0.3 }}
           style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: "70%",
+            position: "absolute", left: 0, right: 0, top: "72%",
             textAlign: "center",
-            opacity: phase === "closed" ? 1 : 0,
             pointerEvents: phase === "closed" ? "auto" : "none",
-            transition: "opacity 300ms ease",
           }}
         >
           {guestName && (
-            <p style={{ fontSize: 12, color: "#7a6c4c" }}>
+            <p style={{ fontSize: 12, color: "#7a6c4c", fontStyle: "italic" }}>
               Dear, <span style={{ fontWeight: 500 }}>{guestName}</span>
             </p>
           )}
           <TapHint />
-        </div>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </motion.div>
   );
 }
 
 // ─────────────────────────────────────────────────────────
-// MAIN PAGE
-//
-// `guestName` can arrive two ways:
-//   1. A `guestName` prop passed in directly (e.g. if some parent
-//      route/component already knows who's visiting).
-//   2. A `?guest=Name` query parameter on the URL — this is what
-//      makes per-guest QR codes work: each guest's code just points
-//      at `yoursite.com/?guest=TheirName`, and the line below reads
-//      it automatically once the page loads.
-//
-// If both are present, the URL takes priority, since that's the
-// one that actually changes per visit/per QR code.
+// MAIN
 // ─────────────────────────────────────────────────────────
 export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
   const [opened, setOpened] = useState(false);
@@ -674,23 +723,42 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
   const audioRef = useRef(null);
   const countdown = useCountdown(EVENT.weddingDateTimeISO);
 
+  const heroRef = useRef(null);
+  const { scrollY } = useScroll();
+  const heroY = useTransform(scrollY, [0, 500], [0, 80]);
+  const heroScale = useTransform(scrollY, [0, 500], [1, 1.08]);
+
   const sectionRefs = {
-    home: useRef(null),
-    couple: useRef(null),
-    event: useRef(null),
-    rsvp: useRef(null),
+    home: useRef(null), couple: useRef(null),
+    event: useRef(null), rsvp: useRef(null),
   };
 
-  // Reads ?guest=Name from the current URL once on mount. This is
-  // what lets a guest's own QR code open the same deployed site but
-  // greet them by name — no per-guest build or prop wiring needed.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const guestFromUrl = params.get("guest");
-    if (guestFromUrl) {
-      setGuestName(decodeURIComponent(guestFromUrl));
-    }
+    const g = params.get("guest");
+    if (g) setGuestName(decodeURIComponent(g));
   }, []);
+
+  // The main content behind CoverScreen is always mounted in the DOM (just
+  // faded to opacity 0), so without this the page is scrollable to its full
+  // height while the envelope is still showing — you end up scrolling an
+  // invisible page behind a `position: fixed` cover, which looks exactly
+  // like scrolling past the card into empty space. Locking scroll here
+  // prevents that entirely, and resetting to the top on open ensures the
+  // hero parallax (useScroll/useTransform) and the couple section's
+  // whileInView animations start from scrollY = 0 instead of wherever the
+  // page happened to be scrolled to behind the cover.
+  useEffect(() => {
+    if (!opened) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+      window.scrollTo(0, 0);
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [opened]);
 
   const scrollTo = (id) => {
     setActiveNav(id);
@@ -698,139 +766,230 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
   };
 
   useEffect(() => {
-    if (opened && audioRef.current && !muted) {
-      audioRef.current.play().catch(() => {});
-    }
+    if (opened && audioRef.current && !muted) audioRef.current.play().catch(() => {});
   }, [opened, muted]);
 
+  const fadeUp = {
+    hidden: { opacity: 0, y: 24 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] } },
+  };
+
   return (
-    <div className="wi-root relative min-h-screen w-full" style={{ backgroundColor: "#f6f3e8", color: "#3f4632" }}>
+    <div
+      className="wi-root wi-grain relative min-h-screen w-full"
+      style={{ backgroundColor: "#f7f4e9", color: "#3f4632" }}
+    >
       <GlobalInviteStyles />
 
-      {/* Optional background music */}
       {BG_AMBIENT_MUSIC_URL && <audio ref={audioRef} src={BG_AMBIENT_MUSIC_URL} loop />}
 
-      {!opened && <CoverScreen onOpen={() => setOpened(true)} guestName={guestName} />}
+      <AnimatePresence>
+        {!opened && <CoverScreen onOpen={() => setOpened(true)} guestName={guestName} />}
+      </AnimatePresence>
 
-      <div
-        className="mx-auto max-w-md pb-24 transition-opacity duration-700"
-        style={{ opacity: opened ? 1 : 0 }}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: opened ? 1 : 0 }}
+        transition={{ duration: 0.9, delay: opened ? 0.2 : 0 }}
+        className="mx-auto max-w-md pb-28"
       >
-        {/* Mute toggle */}
         {opened && BG_AMBIENT_MUSIC_URL && (
           <button
             onClick={() => setMuted((m) => !m)}
             className="fixed right-4 top-4 z-40 flex h-9 w-9 items-center justify-center rounded-full shadow"
-            style={{ backgroundColor: "rgba(255,255,255,0.8)", color: "#5c6b45" }}
+            style={{ backgroundColor: "rgba(255,255,255,0.85)", color: "#5c6b45" }}
           >
             {muted ? <FaVolumeMute size={16} /> : <FaVolumeUp size={16} />}
           </button>
         )}
 
-        {/* ───────── HERO / HOME — now shows both names ───────── */}
-        <section ref={sectionRefs.home} className="relative px-6 pt-10 text-center">
-          <p className="font-serif text-2xl italic" style={{ color: "#5c6b45" }}>&amp;</p>
+        {/* HERO */}
+        <section ref={sectionRefs.home} className="relative px-6 pt-12 text-center">
+          <motion.p
+            initial="hidden" animate="show" variants={fadeUp}
+            className="font-serif text-3xl italic"
+            style={{ color: "#5c6b45" }}
+          >
+            &
+          </motion.p>
 
-          <ArchFrame
-            src={HERO_VIDEO_POSTER}
-            alt="Cover"
-            className="mx-auto mt-6 h-[420px] w-[280px]"
-          />
+          <motion.div
+            ref={heroRef}
+            style={{ y: heroY, scale: heroScale }}
+            className="mx-auto mt-6"
+          >
+            <ArchFrame
+              src={HERO_VIDEO_POSTER}
+              alt="Cover"
+              className="mx-auto h-[440px] w-[290px]"
+            />
+          </motion.div>
 
-          <h2 className="mt-6 font-serif text-3xl italic" style={{ color: "#3f4632" }}>
-            {COUPLE.groom.nickname} &amp; {COUPLE.bride.nickname}
-          </h2>
-          <p className="mt-1 text-sm tracking-wide" style={{ color: "#5c5848" }}>
-            {COUPLE.groom.fullName} &amp; {COUPLE.bride.fullName}
-          </p>
+          <motion.h2
+            initial="hidden" whileInView="show" viewport={{ once: true }}
+            variants={fadeUp}
+            className="mt-8 font-serif text-4xl italic"
+            style={{ color: "#3f4632", letterSpacing: "0.01em" }}
+          >
+            {COUPLE.groom.nickname} <span style={{ color: "#c9a14a" }}>&</span> {COUPLE.bride.nickname}
+          </motion.h2>
+          <motion.p
+            initial="hidden" whileInView="show" viewport={{ once: true }}
+            variants={fadeUp}
+            className="mt-2 text-xs uppercase"
+            style={{ color: "#8d8463", letterSpacing: "0.3em" }}
+          >
+            {COUPLE.groom.fullName} & {COUPLE.bride.fullName}
+          </motion.p>
         </section>
 
         <SectionDivider />
 
-        {/* ───────── VERSE ───────── */}
-        <section className="relative mx-6 overflow-hidden rounded-2xl px-6 py-10 text-center" style={{ backgroundColor: "#dde3cb" }}>
+        {/* VERSE */}
+        <motion.section
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.9 }}
+          className="relative mx-6 overflow-hidden rounded-3xl px-8 py-12 text-center"
+          style={{
+            background: "linear-gradient(160deg, #e5ead1 0%, #d3dbb8 100%)",
+            border: "1px solid #c3ce9e",
+            boxShadow: "0 20px 40px -25px rgba(60,80,30,0.35)",
+          }}
+        >
           <FloralCorner className="absolute -right-6 -top-6 h-24 w-24 opacity-60" />
-          <p className="font-serif text-base italic leading-relaxed" style={{ color: "#3f4632" }}>{EVENT.verse}</p>
-          <p className="mt-3 text-sm" style={{ color: "#5c6b45" }}>{EVENT.verseRef}</p>
-        </section>
+          <FloralCorner className="absolute -bottom-6 -left-6 h-24 w-24 opacity-60" flip />
+          <p className="font-serif text-lg italic leading-relaxed" style={{ color: "#3f4632" }}>
+            {EVENT.verse}
+          </p>
+          <p className="mt-4 text-xs uppercase" style={{ color: "#5c6b45", letterSpacing: "0.3em" }}>
+            {EVENT.verseRef}
+          </p>
+        </motion.section>
 
         <SectionDivider symbol="✦" />
 
-        {/* ───────── COUPLE ───────── */}
+        {/* COUPLE */}
         <section ref={sectionRefs.couple} className="px-6">
-          <h3 className="text-center text-xs uppercase tracking-[0.3em]" style={{ color: "#8d8463" }}>The Couple</h3>
+          <h3 className="text-center text-[10px] uppercase" style={{ color: "#8d8463", letterSpacing: "0.35em" }}>
+            The Couple
+          </h3>
 
           {[COUPLE.groom, COUPLE.bride].map((p, idx) => (
-            <div key={idx} className="mt-8 text-center">
-              <ArchFrame src={p.photo} alt={p.nickname} className="mx-auto h-72 w-56" />
-              <p className="mt-5 font-serif text-2xl italic" style={{ color: "#5c6b45" }}>{p.nickname}</p>
-              <p className="mt-1 text-base font-medium">{p.fullName}</p>
-              <p className="mt-2 text-xs" style={{ color: "#7c8a5e" }}>
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.8, delay: idx * 0.1 }}
+              className="mt-10 text-center"
+            >
+              <ArchFrame src={p.photo} alt={p.nickname} className="mx-auto h-80 w-60" />
+              <p className="mt-6 font-serif text-3xl italic" style={{ color: "#5c6b45" }}>{p.nickname}</p>
+              <p className="mt-1 font-serif text-lg" style={{ color: "#3f4632" }}>{p.fullName}</p>
+              <p className="mt-3 text-[10px] uppercase" style={{ color: "#8d8463", letterSpacing: "0.3em" }}>
                 {idx === 0 ? "Son of" : "Daughter of"}
               </p>
-              <p className="text-sm" style={{ color: "#5c5848" }}>{p.parents[0]}</p>
-              <p className="text-sm" style={{ color: "#5c5848" }}>&amp; {p.parents[1]}</p>
-              <a
+              <p className="mt-1 text-sm italic" style={{ color: "#5c5848" }}>{p.parents[0]}</p>
+              <p className="text-sm italic" style={{ color: "#5c5848" }}>& {p.parents[1]}</p>
+              <motion.a
+                whileHover={{ scale: 1.1, rotate: 6 }}
+                whileTap={{ scale: 0.95 }}
                 href={p.instagram}
-                target="_blank"
-                rel="noreferrer"
-                className="mx-auto mt-4 flex h-10 w-10 items-center justify-center rounded-full text-white"
-                style={{ backgroundColor: "#3f4632" }}
+                target="_blank" rel="noreferrer"
+                className="mx-auto mt-5 flex h-10 w-10 items-center justify-center rounded-full text-white"
+                style={{ background: "linear-gradient(135deg, #3f4632, #5c6b45)" }}
               >
                 <FaInstagram size={16} />
-              </a>
-            </div>
+              </motion.a>
+            </motion.div>
           ))}
 
-          <div className="mt-10 text-center font-serif text-3xl italic" style={{ color: "#5c6b45" }}>&amp;</div>
+          <div className="mt-10 text-center font-serif text-4xl italic" style={{ color: "#c9a14a" }}>&</div>
         </section>
 
         <SectionDivider />
 
-        {/* ───────── WITH LOVE / INVITATION TEXT ───────── */}
+        {/* WITH LOVE */}
         <section className="relative px-10 text-center">
           <FloralCorner className="absolute -left-2 top-0 h-20 w-20 opacity-60" />
           <FloralCorner className="absolute -right-2 top-0 h-20 w-20 opacity-60" flip />
-          <h3 className="mt-6 font-serif text-2xl">With Love.</h3>
-          <p className="mt-3 text-sm leading-relaxed" style={{ color: "#5c5848" }}>
-            We request the honor of your presence on our special day that will be held on:
+          <motion.h3
+            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }} transition={{ duration: 0.7 }}
+            className="mt-6 font-serif text-3xl italic"
+          >
+            With Love.
+          </motion.h3>
+          <p className="mt-3 text-sm italic leading-relaxed" style={{ color: "#5c5848" }}>
+            We request the honor of your presence on our special day.
           </p>
         </section>
 
-        {/* ───────── EVENT DETAILS ───────── */}
-        <section
+        {/* EVENT DETAILS */}
+        <motion.section
           ref={sectionRefs.event}
-          className="relative mx-6 mt-8 overflow-hidden rounded-[40px] px-6 pb-10 pt-8 text-center"
-          style={{ background: "linear-gradient(180deg, #f3d9cf 0%, #fbf3ee 100%)" }}
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.9 }}
+          className="relative mx-6 mt-8 overflow-hidden rounded-[42px] px-6 pb-10 pt-10 text-center"
+          style={{
+            background: "linear-gradient(180deg, #f5dccf 0%, #fbf3ee 100%)",
+            border: "1px solid #ecc9b6",
+            boxShadow: "0 25px 50px -25px rgba(140,80,60,0.35)",
+          }}
         >
-          <p className="text-sm uppercase tracking-[0.2em]" style={{ color: "#8a5c4f" }}>{EVENT.day}</p>
-          <p className="mt-2 font-serif text-xl">{EVENT.date}</p>
-          <p className="mt-1 text-sm" style={{ color: "#8a5c4f" }}>{EVENT.ceremonyTime}</p>
+          <FloralCorner className="absolute -top-4 -right-4 h-20 w-20 opacity-50" tone="gold" flip />
 
-          <div className="my-5 h-px w-2/3 mx-auto" style={{ backgroundColor: "#d8b9a3" }} />
+          <p className="text-[10px] uppercase" style={{ color: "#8a5c4f", letterSpacing: "0.35em" }}>
+            {EVENT.day}
+          </p>
+          <p className="mt-2 font-serif text-3xl italic">{EVENT.date}</p>
+          <p className="mt-1 text-xs uppercase" style={{ color: "#8a5c4f", letterSpacing: "0.25em" }}>
+            Ceremony · {EVENT.ceremonyTime}
+          </p>
 
-          <p className="text-sm uppercase tracking-[0.2em]" style={{ color: "#8a5c4f" }}>After Party</p>
-          <p className="mt-1 text-sm" style={{ color: "#8a5c4f" }}>{EVENT.afterPartyTime}</p>
+          <div className="wi-goldline my-5 h-px w-2/3 mx-auto" />
 
-          <div className="mt-6 flex justify-center" style={{ color: "#8a5c4f" }}>
+          <p className="text-[10px] uppercase" style={{ color: "#8a5c4f", letterSpacing: "0.35em" }}>
+            After Party
+          </p>
+          <p className="mt-1 text-xs uppercase" style={{ color: "#8a5c4f", letterSpacing: "0.25em" }}>
+            {EVENT.afterPartyTime}
+          </p>
+
+          <motion.div
+            initial={{ scale: 0.7, opacity: 0 }}
+            whileInView={{ scale: 1, opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 180, damping: 14 }}
+            className="mt-6 flex justify-center"
+            style={{ color: "#8a5c4f" }}
+          >
             <FaLandmark size={26} />
-          </div>
-          <p className="mt-3 font-medium leading-snug">{EVENT.venueName}</p>
+          </motion.div>
+          <p className="mt-3 font-serif text-lg leading-snug">{EVENT.venueName}</p>
           <p className="mt-2 text-xs italic" style={{ color: "#8a5c4f" }}>{EVENT.venueAddress}</p>
 
-          <a
+          <motion.a
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.96 }}
             href={EVENT.mapsUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-6 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-medium uppercase tracking-widest text-white shadow-md transition"
-            style={{ backgroundColor: "#5c6b45" }}
+            target="_blank" rel="noreferrer"
+            className="mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 text-[10px] uppercase text-white shadow-md"
+            style={{
+              letterSpacing: "0.3em",
+              background: "linear-gradient(135deg, #5c6b45 0%, #7c8a5e 100%)",
+            }}
           >
-            <FaMapMarkerAlt size={14} /> View Location
-          </a>
-        </section>
+            <FaMapMarkerAlt size={12} /> View Location
+          </motion.a>
+        </motion.section>
 
-        {/* ───────── COUNTDOWN ───────── */}
-        <section className="relative mt-12 px-6 text-center">
+        {/* COUNTDOWN */}
+        <section className="relative mt-14 px-6 text-center">
           <div className="flex justify-center gap-3">
             <CountdownBlock value={countdown.days} label="Days" />
             <CountdownBlock value={countdown.hours} label="Hours" />
@@ -838,68 +997,97 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
             <CountdownBlock value={countdown.seconds} label="Seconds" />
           </div>
 
-          <p className="mt-5 inline-block rounded-full px-4 py-1.5 text-xs font-medium text-white" style={{ backgroundColor: "#5c6b45" }}>
+          <motion.p
+            whileHover={{ scale: 1.05 }}
+            className="mt-6 inline-block rounded-full px-5 py-2 text-[10px] uppercase text-white"
+            style={{
+              letterSpacing: "0.3em",
+              background: "linear-gradient(135deg, #5c6b45, #7c8a5e)",
+            }}
+          >
             {COUPLE.hashtag}
-          </p>
+          </motion.p>
 
-          <div className="relative mx-auto mt-8 h-64 w-64 overflow-hidden rounded-t-full" style={{ border: "4px solid #dde3cb" }}>
-            <img
-              src={GALLERY[0]}
-              alt=""
-              className="h-full w-full object-cover"
-              onError={(e) => {
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = FALLBACK_PHOTO;
-              }}
-            />
-          </div>
+          <ArchFrame
+            src={GALLERY[0]}
+            alt=""
+            className="mx-auto mt-8 h-64 w-64"
+          />
 
-          <p className="mt-6 font-serif italic" style={{ color: "#5c6b45" }}>
-            We look forward to seeing you on our special day
+          <p className="mt-6 font-serif text-lg italic" style={{ color: "#5c6b45" }}>
+            We look forward to celebrating with you.
           </p>
         </section>
 
         <SectionDivider symbol="✦" />
 
-        {/* ───────── GALLERY / OUR STORY ───────── */}
+        {/* GALLERY */}
         <section className="px-6">
-          <h3 className="text-center text-xs uppercase tracking-[0.3em]" style={{ color: "#8d8463" }}>Moments</h3>
+          <h3 className="text-center text-[10px] uppercase" style={{ color: "#8d8463", letterSpacing: "0.35em" }}>
+            Moments
+          </h3>
           <div className="mt-6 grid grid-cols-2 gap-4">
             {GALLERY.map((src, i) => (
-              <ArchFrame key={i} src={src} alt={`Gallery ${i + 1}`} className="h-44 w-full" />
+              <ArchFrame key={i} src={src} alt={`Gallery ${i + 1}`} className="h-48 w-full" delay={i * 0.08} />
             ))}
           </div>
-          <div className="mt-6 text-center">
-            <button
-              className="inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-medium uppercase tracking-widest transition"
-              style={{ border: "1px solid #5c6b45", color: "#5c6b45" }}
+          <div className="mt-8 text-center">
+            <motion.button
+              whileHover={{ scale: 1.04, backgroundColor: "#5c6b45", color: "#fff" }}
+              whileTap={{ scale: 0.97 }}
+              className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-[10px] uppercase"
+              style={{
+                letterSpacing: "0.3em",
+                border: "1px solid #5c6b45",
+                color: "#5c6b45",
+                background: "transparent",
+              }}
             >
-              <FaInstagram size={14} /> Our Story
-            </button>
+              <FaInstagram size={12} /> Our Story
+            </motion.button>
           </div>
         </section>
 
         <SectionDivider />
 
-        {/* ───────── RSVP ───────── */}
+        {/* RSVP */}
         <section ref={sectionRefs.rsvp}>
-          <h3 className="text-center text-xs uppercase tracking-[0.3em]" style={{ color: "#8d8463" }}>
+          <h3 className="text-center text-[10px] uppercase" style={{ color: "#8d8463", letterSpacing: "0.35em" }}>
             RSVP
           </h3>
+          <p className="mt-2 text-center font-serif text-2xl italic" style={{ color: "#5c6b45" }}>
+            Send Your Wishes
+          </p>
           <div className="mt-6">
             <WishesForm />
           </div>
         </section>
 
-        {/* ───────── FOOTER ───────── */}
-        <footer className="mt-4 py-10 text-center text-white" style={{ backgroundColor: "#5c6b45" }}>
-          <FaHeart className="mx-auto mb-3" size={20} />
-          <p className="font-serif text-lg italic">
-            {COUPLE.groom.nickname} &amp; {COUPLE.bride.nickname}
+        {/* FOOTER */}
+        <motion.footer
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1 }}
+          className="mt-10 py-12 text-center text-white"
+          style={{
+            background: "linear-gradient(180deg, #5c6b45 0%, #3f4632 100%)",
+          }}
+        >
+          <motion.div
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <FaHeart className="mx-auto mb-4" size={22} />
+          </motion.div>
+          <p className="font-serif text-2xl italic">
+            {COUPLE.groom.nickname} & {COUPLE.bride.nickname}
           </p>
-          <p className="mt-1 text-xs uppercase tracking-widest opacity-80">{EVENT.date}</p>
-        </footer>
-      </div>
+          <p className="mt-2 text-[10px] uppercase opacity-80" style={{ letterSpacing: "0.35em" }}>
+            {EVENT.date}
+          </p>
+        </motion.footer>
+      </motion.div>
 
       {opened && <BottomNav active={activeNav} onNavigate={scrollTo} />}
     </div>
