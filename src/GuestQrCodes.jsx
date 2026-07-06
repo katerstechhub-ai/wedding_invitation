@@ -1,7 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 
 const SITE_URL = "https://wedding-invitation-taupe-seven-44.vercel.app";
+const STORAGE_KEY = "wedding_guest_list_v1";
 
 function GuestCard({ name }) {
   const canvasWrapperRef = useRef(null);
@@ -50,9 +51,96 @@ function GuestCard({ name }) {
   );
 }
 
+// ── Guest tracking table ─────────────────────────────────
+function GuestTable({ guests, arrivals, onToggleArrived }) {
+  if (guests.length === 0) return null;
+
+  const arrivedCount = guests.filter((g) => arrivals[g]?.arrived).length;
+
+  return (
+    <div style={{ marginTop: 32 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 10,
+        }}
+      >
+        <h2 style={{ color: "#3f4632", fontSize: 18, margin: 0 }}>Guest List</h2>
+        <span style={{ fontSize: 13, color: "#5c6b45", fontWeight: 600 }}>
+          {arrivedCount} / {guests.length} arrived
+        </span>
+      </div>
+
+      <div style={{ overflowX: "auto", border: "1px solid #dcd4ba", borderRadius: 10 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+          <thead>
+            <tr style={{ background: "#efe9d6", color: "#3f4632", textAlign: "left" }}>
+              <th style={{ padding: "10px 12px", width: 48 }}>#</th>
+              <th style={{ padding: "10px 12px" }}>Guest Name</th>
+              <th style={{ padding: "10px 12px", width: 110, textAlign: "center" }}>Arrived</th>
+              <th style={{ padding: "10px 12px", width: 160 }}>Arrival Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {guests.map((name, i) => {
+              const record = arrivals[name] || { arrived: false, time: null };
+              return (
+                <tr
+                  key={name}
+                  style={{
+                    borderTop: "1px solid #e5ddc2",
+                    background: record.arrived ? "#f1f7e6" : "transparent",
+                  }}
+                >
+                  <td style={{ padding: "8px 12px", color: "#7c8a5e" }}>{i + 1}</td>
+                  <td style={{ padding: "8px 12px", color: "#3f4632" }}>{name}</td>
+                  <td style={{ padding: "8px 12px", textAlign: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={record.arrived}
+                      onChange={() => onToggleArrived(name)}
+                      style={{ width: 18, height: 18, cursor: "pointer" }}
+                    />
+                  </td>
+                  <td style={{ padding: "8px 12px", color: "#7c8a5e", fontSize: 12 }}>
+                    {record.time ? new Date(record.time).toLocaleTimeString() : "—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function GuestQrCodes() {
   const [bulkText, setBulkText] = useState("");
   const [guests, setGuests] = useState([]);
+  const [arrivals, setArrivals] = useState({});
+
+  // Load saved list + arrival state on mount
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      if (saved.guests) setGuests(saved.guests);
+      if (saved.arrivals) setArrivals(saved.arrivals);
+      if (saved.bulkText) setBulkText(saved.bulkText);
+    } catch {
+      // ignore malformed storage
+    }
+  }, []);
+
+  // Persist whenever guests or arrivals change
+  useEffect(() => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ guests, arrivals, bulkText })
+    );
+  }, [guests, arrivals, bulkText]);
 
   const handleGenerate = () => {
     const names = bulkText
@@ -60,6 +148,28 @@ export default function GuestQrCodes() {
       .map((n) => n.trim())
       .filter(Boolean);
     setGuests(names);
+
+    // Keep arrival records for names that still exist; drop the rest
+    setArrivals((prev) => {
+      const next = {};
+      names.forEach((n) => {
+        if (prev[n]) next[n] = prev[n];
+      });
+      return next;
+    });
+  };
+
+  const handleToggleArrived = (name) => {
+    setArrivals((prev) => {
+      const wasArrived = prev[name]?.arrived;
+      return {
+        ...prev,
+        [name]: {
+          arrived: !wasArrived,
+          time: !wasArrived ? new Date().toISOString() : null,
+        },
+      };
+    });
   };
 
   return (
@@ -98,6 +208,12 @@ export default function GuestQrCodes() {
       >
         Generate QR Codes
       </button>
+
+      <GuestTable
+        guests={guests}
+        arrivals={arrivals}
+        onToggleArrived={handleToggleArrived}
+      />
 
       <div
         style={{
