@@ -21,6 +21,13 @@ import bizzerPhoto from "./assets/Bizzer.jpeg";
  *  • Softer palette + subtle grain, gold hairlines, arch frames w/ inner ring.
  *  • Parallax hero, animated countdown flip, hover-lift on cards.
  *  • Same data + RSVP behavior.
+ *
+ * FIX (this version): the envelope "letter" card previously had both a
+ * `top` and a `bottom` offset set, which forced it to a fixed height
+ * regardless of how much content it held. Because the content was
+ * top-aligned (`justifyContent: "flex-start"`), any leftover height showed
+ * up as empty space at the bottom of the card. The `bottom` offset has been
+ * removed so the card's height is driven by its own content + padding.
  */
 
 // ─────────────────────────────────────────────────────────
@@ -551,7 +558,13 @@ function CoverScreen({ onOpen, guestName }) {
             ...paperTexture,
           }}
         >
-          {/* Letter */}
+          {/* Letter
+              FIX: removed the fixed `bottom: "5%"` offset that previously
+              forced this card to a set height (~460px) regardless of
+              content. With content top-aligned via justifyContent, any
+              unused height showed up as a visible gap at the bottom of the
+              card. Now only `top` is set, so the card's height is driven by
+              its own content + top/bottom padding, closing that gap. */}
           <motion.div
             initial={false}
             animate={
@@ -563,15 +576,13 @@ function CoverScreen({ onOpen, guestName }) {
             className="absolute inset-x-5 flex flex-col items-center px-6 text-center"
             style={{
               top: "13%",
-              bottom: "5%",
               borderRadius: 12,
               border: "1px solid #cdbf99",
               background: "linear-gradient(160deg, #fffdf7 0%, #f6efdd 100%)",
               boxShadow:
                 "0 14px 34px rgba(60,50,20,0.2), inset 0 0 0 1px rgba(201,161,74,0.15)",
               paddingTop: 30,
-              paddingBottom: 22,
-              justifyContent: "flex-start",
+              paddingBottom: 30,
             }}
           >
             <span
