@@ -116,34 +116,6 @@ function QrModal({ name, onClose }) {
   );
 }
 
-// ── Small QR thumbnail card (click to open modal) ────────
-function GuestCard({ name, onOpen }) {
-  return (
-    <div
-      onClick={() => onOpen(name)}
-      style={{
-        border: "1px solid #dcd4ba",
-        borderRadius: 16,
-        padding: 20,
-        textAlign: "center",
-        backgroundColor: "#fbf8f0",
-        cursor: "pointer",
-      }}
-    >
-      <div style={{ pointerEvents: "none" }}>
-        <QRCodeCanvas
-          value={`${SITE_URL}/?guest=${encodeURIComponent(name)}`}
-          size={140}
-          bgColor="#fbf8f0"
-          fgColor="#3f4632"
-        />
-      </div>
-      <p style={{ marginTop: 10, fontWeight: 500, color: "#3f4632" }}>{name}</p>
-      <p style={{ fontSize: 11, color: "#7c8a5e" }}>Tap to view / download</p>
-    </div>
-  );
-}
-
 // ── Guest tracking table ─────────────────────────────────
 function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, busyId }) {
   if (guests.length === 0) return null;
@@ -452,6 +424,8 @@ export default function GuestQrCodes() {
           <div style={{ position: "relative", flex: 1 }}>
             <input
               type={showKey ? "text" : "password"}
+              id="admin-key"
+              name="admin-key"
               value={adminKey}
               onChange={(e) => setAdminKey(e.target.value)}
               placeholder="Paste your ADMIN_KEY"
@@ -598,28 +572,13 @@ export default function GuestQrCodes() {
           Enter the admin key above to load and manage the guest list.
         </p>
       ) : (
-        <>
-          <GuestTable
-            guests={guests}
-            onToggleArrived={handleToggleArrived}
-            onDelete={handleDelete}
-            onOpenQr={setModalGuest}
-            busyId={busyId}
-          />
-
-          <div
-            style={{
-              marginTop: 24,
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-              gap: 16,
-            }}
-          >
-            {guests.map((g) => (
-              <GuestCard key={g._id} name={g.name} onOpen={setModalGuest} />
-            ))}
-          </div>
-        </>
+        <GuestTable
+          guests={guests}
+          onToggleArrived={handleToggleArrived}
+          onDelete={handleDelete}
+          onOpenQr={setModalGuest}
+          busyId={busyId}
+        />
       )}
 
       {modalGuest && <QrModal name={modalGuest} onClose={() => setModalGuest(null)} />}
