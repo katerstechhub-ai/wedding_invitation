@@ -3,11 +3,14 @@ import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
 import {
   FaInstagram, FaMapMarkerAlt, FaVolumeUp, FaVolumeMute, FaHeart,
   FaHome, FaUserFriends, FaCalendarAlt, FaEnvelopeOpenText, FaLandmark,
+  FaCamera, FaScroll,
 } from "react-icons/fa";
 
 import pamsPhoto from "./assets/pams.jpeg";
 import bizzerPhoto from "./assets/Bizzer.jpeg";
 import SEAL_URL from "./assets/stark-seal.png";
+// TODO: drop your screenshot into src/assets/ and update this import
+import guestUploadPreview from "./assets/guest-upload-preview.jpeg";
 
 
 /**
@@ -16,8 +19,9 @@ import SEAL_URL from "./assets/stark-seal.png";
  *           ink #1c1a15, moss shadow #2a2b1e.
  * Fonts:    Cinzel (display, Trajan-like), UnifrakturMaguntia (blackletter
  *           accents), IM Fell English (body serif).
- * Envelope: parchment scroll, blood-red wax seal with monogram, single
- *           framed "WEDDING IS COMING" line, direwolf-ink flourish corners.
+ * Envelope: ancient parchment scroll, charred/burnt edges, blood-red wax
+ *           seal with monogram, single framed "Wedding is Coming" line,
+ *           direwolf-ink flourish corners, drifting embers.
  */
 
 // ─────────────────────────────────────────────────────────
@@ -69,8 +73,11 @@ const HERO_VIDEO_POSTER =
 const BG_AMBIENT_MUSIC_URL = "";
 const RSVP_EMAIL_ENDPOINT = "https://formspree.io/f/REPLACE_WITH_YOUR_FORM_ID";
 
+// Guests are sent here to upload their own photos from the event
+const GUEST_UPLOAD_URL = "https://mediahub-frontend-4tdp.vercel.app";
+
 // ─────────────────────────────────────────────────────────
-// Global styles — GOT typography + parchment
+// Global styles — GOT typography + parchment + ancient scroll effects
 // ─────────────────────────────────────────────────────────
 function GlobalInviteStyles() {
   return (
@@ -93,7 +100,7 @@ function GlobalInviteStyles() {
         letter-spacing: 0.02em;
       }
 
-      /* Aged parchment stains + fiber grain */
+      /* Aged parchment stains + fiber grain (used throughout the page) */
       .wi-grain { position: relative; }
       .wi-grain::after {
         content: "";
@@ -111,19 +118,74 @@ function GlobalInviteStyles() {
       .wi-goldline {
         background: linear-gradient(90deg, transparent, #9c7a2e 20%, #e2c874 50%, #9c7a2e 80%, transparent);
       }
+      .wi-inkline {
+        background: linear-gradient(90deg, transparent, #2a1a0a 20%, #5a3a1a 50%, #2a1a0a 80%, transparent);
+      }
+
+      /* ---------- ANCIENT PARCHMENT (cover screen) ---------- */
+      .wi-ancient {
+        background:
+          radial-gradient(ellipse at 15% 20%, rgba(90,45,10,0.35), transparent 55%),
+          radial-gradient(ellipse at 85% 80%, rgba(60,25,5,0.45), transparent 55%),
+          radial-gradient(circle at 50% 50%, rgba(210,170,100,0.15), transparent 70%),
+          linear-gradient(160deg, #c9a866 0%, #a8813f 45%, #7d5822 100%);
+      }
+      .wi-ancient-stains::before {
+        content:""; position:absolute; inset:0; pointer-events:none;
+        background-image:
+          radial-gradient(circle at 22% 30%, rgba(40,20,5,0.55) 0 6px, transparent 8px),
+          radial-gradient(circle at 78% 25%, rgba(40,20,5,0.35) 0 4px, transparent 6px),
+          radial-gradient(circle at 30% 78%, rgba(40,20,5,0.4) 0 8px, transparent 12px),
+          radial-gradient(ellipse at 60% 65%, rgba(30,15,5,0.28), transparent 40%),
+          radial-gradient(ellipse at 10% 60%, rgba(30,15,5,0.35), transparent 35%);
+        opacity: .85;
+      }
+      .wi-ancient-fiber::after {
+        content:""; position:absolute; inset:0; pointer-events:none;
+        background-image:
+          url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.20  0 0 0 0 0.10  0 0 0 0 0.02  0 0 0 0.45 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+        mix-blend-mode: multiply; opacity: .75;
+      }
+      /* Charred/torn edges */
+      .wi-burnt-edge {
+        -webkit-mask-image:
+          radial-gradient(ellipse at 50% 50%, #000 62%, transparent 78%),
+          url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='r'><feTurbulence baseFrequency='0.02' numOctaves='2'/><feDisplacementMap in='SourceGraphic' scale='30'/></filter><rect width='100%25' height='100%25' fill='black' filter='url(%23r)'/></svg>");
+        -webkit-mask-composite: source-over;
+        mask-image:
+          radial-gradient(ellipse at 50% 50%, #000 62%, transparent 78%);
+        box-shadow:
+          inset 0 0 40px rgba(30,10,0,0.75),
+          inset 0 0 90px rgba(60,25,5,0.55);
+      }
+      .wi-scorched::after {
+        content:""; position:absolute; inset:0; pointer-events:none;
+        background:
+          radial-gradient(ellipse at 0% 0%, rgba(20,8,0,0.85), transparent 22%),
+          radial-gradient(ellipse at 100% 0%, rgba(20,8,0,0.8), transparent 22%),
+          radial-gradient(ellipse at 0% 100%, rgba(20,8,0,0.85), transparent 22%),
+          radial-gradient(ellipse at 100% 100%, rgba(20,8,0,0.85), transparent 22%);
+        mix-blend-mode: multiply;
+      }
+
+      @keyframes wi-candle {
+        0%,100% { opacity: .88; filter: brightness(1); }
+        50%     { opacity: 1;   filter: brightness(1.15); }
+      }
+      .wi-candle { animation: wi-candle 3.6s ease-in-out infinite; }
 
       @keyframes wi-tap-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
       @keyframes wi-tap-ripple { 0% { transform: scale(.55); opacity:.85; } 100% { transform: scale(1.9); opacity:0; } }
       @keyframes wi-seal-glow {
-        0%,100% { box-shadow: 0 8px 18px rgba(0,0,0,.5), inset 0 2px 4px rgba(255,180,150,.35), 0 0 0 rgba(180,25,25,0); }
-        50%     { box-shadow: 0 8px 18px rgba(0,0,0,.5), inset 0 2px 4px rgba(255,180,150,.35), 0 0 26px rgba(180,25,25,.55); }
+        0%,100% { filter: drop-shadow(0 8px 14px rgba(0,0,0,.55)) drop-shadow(0 0 0 rgba(180,25,25,0)); }
+        50%     { filter: drop-shadow(0 8px 14px rgba(0,0,0,.55)) drop-shadow(0 0 14px rgba(180,25,25,.6)); }
       }
       .wi-tap-icon { animation: wi-tap-bob 1.6s ease-in-out infinite; }
       .wi-tap-ripple { animation: wi-tap-ripple 1.6s ease-out infinite; }
-      .wi-seal { animation: wi-seal-glow 2.8s ease-in-out infinite; }
+      .wi-seal { animation: wi-seal-glow 2.8s ease-in-out infinite; will-change: filter; }
 
       @media (prefers-reduced-motion: reduce) {
-        .wi-tap-icon, .wi-tap-ripple, .wi-seal { animation: none; }
+        .wi-tap-icon, .wi-tap-ripple, .wi-seal, .wi-candle { animation: none; }
       }
     `}</style>
   );
@@ -423,22 +485,83 @@ function WishesForm() {
 }
 
 // ─────────────────────────────────────────────────────────
-// Tap hint
+// NEW SECTION — Guest photo upload ("Scribe Your Chronicle")
+// ─────────────────────────────────────────────────────────
+function GuestUploadSection() {
+  return (
+    <section className="px-6 py-16" style={{ background: "#efe3c2" }}>
+      <p className="font-serif text-center text-[11px]" style={{ letterSpacing: "0.4em", color: "#7a1220" }}>
+        RAVENS OF THE REALM
+      </p>
+      <h2 className="font-serif mt-2 text-center text-2xl" style={{ color: "#1c1a15", letterSpacing: "0.1em" }}>
+        Share Your Chronicle
+      </h2>
+      <div className="wi-goldline mx-auto mt-3 h-px w-24" />
+
+      <p className="mx-auto mt-5 max-w-sm text-center text-sm italic" style={{ color: "#4a3820" }}>
+        Every guest is a keeper of memory. Upload the moments you capture at our
+        feast — that our saga may be told in full.
+      </p>
+
+      {/* Screenshot preview of the upload page */}
+      <div
+        className="mx-auto mt-8 overflow-hidden"
+        style={{
+          maxWidth: 340,
+          borderRadius: 8,
+          border: "1px solid #7a5a2c",
+          boxShadow: "0 18px 32px -14px rgba(60,40,15,0.55), inset 0 0 0 1px rgba(201,162,74,0.4)",
+          background: "#1c1a15",
+        }}
+      >
+        <img
+          src={guestUploadPreview}
+          alt="Preview of the guest photo upload page"
+          className="block w-full"
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+      </div>
+
+      <div className="mt-8 flex justify-center">
+        <a
+          href={GUEST_UPLOAD_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-[11px] uppercase shadow-md"
+          style={{
+            letterSpacing: "0.3em",
+            color: "#efe3c2",
+            background: "linear-gradient(135deg,#7a1220,#4a0a12)",
+            border: "1px solid #c9a24a",
+            fontFamily: "'Cinzel', serif",
+          }}
+        >
+          <FaCamera /> Upload Your Photos
+        </a>
+      </div>
+
+      <p className="mt-4 text-center text-[10px]" style={{ letterSpacing: "0.3em", color: "#7a5a2c" }}>
+        <FaScroll className="mr-2 inline-block" />
+        BEAR WITNESS · KEEP THE MEMORY
+      </p>
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Tap hint — used on the ancient scroll cover screen
 // ─────────────────────────────────────────────────────────
 function TapHint({ label = "Break the Seal" }) {
   return (
-    <div className="flex flex-col items-center" style={{ marginTop: 16 }}>
-      <span style={{ fontSize: 10, letterSpacing: "0.35em", textTransform: "uppercase", color: "#7a1220" }}>
+    <div className="flex flex-col items-center">
+      <span style={{ fontFamily: "'Cinzel', serif", fontSize: 10, letterSpacing: "0.4em", color: "#c9a24a" }}>
         {label}
       </span>
-      <div className="wi-tap-icon" style={{ position: "relative", width: 36, height: 36, marginTop: 10 }}>
-        <span
-          className="wi-tap-ripple"
-          style={{ position: "absolute", inset: 4, borderRadius: "50%", border: "1.4px solid #7a1220" }}
-        />
-        <svg width="36" height="36" viewBox="0 0 34 34" fill="none"
-          stroke="#7a1220" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
-          style={{ position: "relative" }}>
+      <div className="wi-tap-icon relative mt-3" style={{ width: 36, height: 36 }}>
+        <span className="wi-tap-ripple absolute inset-1 rounded-full" style={{ border: "1.4px solid #c9a24a" }} />
+        <svg width="36" height="36" viewBox="0 0 34 34" fill="none" stroke="#c9a24a" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ position: "relative" }}>
           <path d="M13.5 18.5V9.6a1.7 1.7 0 0 1 3.4 0V17" />
           <path d="M16.9 17V8.2a1.7 1.7 0 0 1 3.4 0V17" />
           <path d="M20.3 17v-5.6a1.7 1.7 0 0 1 3.4 0v8.7c0 3.2-2.3 5.7-6 5.7h-1.9c-1.9 0-2.9-.6-4-1.9l-2.8-3.4c-.6-.8-.4-1.7.4-2.2.7-.5 1.5-.3 2.1.3l1.7 1.8" />
@@ -448,19 +571,12 @@ function TapHint({ label = "Break the Seal" }) {
   );
 }
 
-// Import your seal image from assets (adjust the path/name to your file)
-
-// If you have a plain image file instead of a .asset.json pointer, use:
-// import SEAL_URL from "@/assets/stark-seal.png";
-
 // ─────────────────────────────────────────────────────────
-// Cover — wax seal on a parchment envelope.
-// Tap the seal → it cracks in place → the triangular flap peels
-// back and the invitation card slides up from inside.
+// Cover — ancient scroll, wax seal that cracks and peels back,
+// drifting embers + candlelight vignette in the background.
 // Uses full viewport height (100dvh) so no gap beneath.
 // ─────────────────────────────────────────────────────────
 function CoverScreen({ onOpen, guestName }) {
-  // idle -> cracking -> opening -> revealed
   const [phase, setPhase] = useState("idle");
   const cracked  = phase !== "idle";
   const opening  = phase === "opening" || phase === "revealed";
@@ -473,37 +589,44 @@ function CoverScreen({ onOpen, guestName }) {
     setTimeout(() => setPhase("revealed"), 1500);
   };
 
-  const parchment = {
-    backgroundImage:
-      "radial-gradient(circle at 20% 25%, rgba(255,240,205,0.65), transparent 55%)," +
-      "radial-gradient(circle at 82% 78%, rgba(70,35,15,0.32), transparent 60%)," +
-      "repeating-linear-gradient(128deg, rgba(60,30,10,0.05) 0 1px, transparent 1px 3px)," +
-      "linear-gradient(160deg, #efe1b6 0%, #d6bb84 100%)",
-    boxShadow: "0 14px 24px -14px rgba(60,40,15,0.55), inset 0 0 0 1px rgba(122,90,44,0.35)",
-    border: "1px solid #7a5a2c",
-    borderRadius: 10,
-  };
-
-  const fan = [-18, -12, -6, 0, 6, 12];
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.7 }}
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden px-4 wi-grain"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
       style={{
-        height: "100dvh",
-        width: "100vw",
-        backgroundColor: "#efe3c2",
-        backgroundImage: "linear-gradient(180deg, #efe3c2 0%, #d9c493 100%)",
+        background:
+          "radial-gradient(ellipse at 50% 40%, #2a1a0a 0%, #120a04 60%, #05030a 100%)",
       }}
     >
-      <FloralCorner className="absolute left-0 top-0 h-24 w-24 opacity-60" />
-      <FloralCorner className="absolute right-0 top-0 h-24 w-24 opacity-60" flip />
-      <FloralCorner className="absolute bottom-0 left-0 h-24 w-24 -scale-y-100 opacity-60" flip />
-      <FloralCorner className="absolute bottom-0 right-0 h-24 w-24 -scale-y-100 opacity-60" />
+      {/* candlelight vignette */}
+      <div
+        className="wi-candle pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 45%, rgba(220,150,60,0.20), transparent 55%)",
+        }}
+      />
+      {/* drifting embers */}
+      {[...Array(14)].map((_, i) => (
+        <motion.span
+          key={i}
+          className="pointer-events-none absolute rounded-full"
+          style={{
+            width: 2 + (i % 3),
+            height: 2 + (i % 3),
+            background: "#e8a24a",
+            left: `${(i * 73) % 100}%`,
+            top: `${60 + ((i * 37) % 30)}%`,
+            filter: "blur(0.5px)",
+            opacity: 0.7,
+          }}
+          animate={{ y: [-10, -180], opacity: [0.9, 0] }}
+          transition={{ duration: 6 + (i % 4), repeat: Infinity, delay: i * 0.4, ease: "easeOut" }}
+        />
+      ))}
 
       <div
         role="button"
@@ -512,260 +635,171 @@ function CoverScreen({ onOpen, guestName }) {
         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && handleTap()}
         className="relative"
         style={{
-          width: "min(82vw, 360px)",
-          height: "min(84dvh, 520px)",
+          width: "min(84vw, 380px)",
+          height: "min(86svh, 560px)",
           cursor: phase === "idle" ? "pointer" : "default",
           perspective: 1400,
         }}
       >
-        {/* Fanned background envelopes */}
-        {fan.map((rot, i) => (
-          <div
-            key={i}
-            className="absolute left-1/2 top-1/2"
-            style={{
-              width: "88%",
-              height: "88%",
-              transform: `translate(-50%, -50%) rotate(${rot}deg)`,
-              transformOrigin: "50% 95%",
-              ...parchment,
-              zIndex: i,
-            }}
-          />
-        ))}
-
-        {/* Front envelope */}
+        {/* Ancient scroll / envelope body */}
         <div
-          className="absolute left-1/2 top-1/2"
+          className="wi-ancient wi-ancient-stains wi-ancient-fiber wi-scorched wi-burnt-edge absolute inset-0 overflow-hidden"
           style={{
-            width: "96%",
-            height: "96%",
-            transform: "translate(-50%, -50%)",
-            zIndex: 30,
-            ...parchment,
-            overflow: "hidden",
-            transformStyle: "preserve-3d",
+            borderRadius: 6,
+            border: "1px solid #3a2410",
+            boxShadow:
+              "0 40px 60px -20px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(80,50,20,0.4)",
           }}
         >
-          {/* Invitation card — slides up from inside the envelope */}
+          {/* inner gold hairline frame */}
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              inset: 18,
+              border: "1px solid rgba(120,85,30,0.55)",
+              boxShadow: "inset 0 0 0 3px rgba(60,35,10,0.35)",
+            }}
+          />
+
+          {/* Invitation content — revealed as flap peels */}
           <motion.div
             initial={false}
-            animate={{
-              y: revealed ? "0%" : "22%",
-              opacity: opening ? 1 : 0,
-            }}
-            transition={{ duration: 0.9, ease: [0.6, 0, 0.35, 1], delay: opening ? 0.35 : 0 }}
-            className="absolute inset-0 flex flex-col items-center px-5 text-center"
-            style={{
-              paddingTop: "16%",
-              paddingBottom: "8%",
-              justifyContent: "space-between",
-              pointerEvents: revealed ? "auto" : "none",
-              zIndex: 1,
-            }}
+            animate={revealed ? { y: 0, opacity: 1 } : { y: 40, opacity: 0 }}
+            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: revealed ? 0.15 : 0 }}
+            className="absolute inset-0 flex flex-col items-center justify-center px-8 text-center"
+            style={{ color: "#2a1a08", pointerEvents: revealed ? "auto" : "none" }}
           >
-            <div className="flex flex-col items-center">
-              <span
-                style={{
-                  fontFamily: "'Cinzel', serif",
-                  fontSize: 9.5,
-                  letterSpacing: "0.32em",
-                  color: "#7a1220",
-                  textTransform: "uppercase",
-                }}
-              >
-                Two Great Houses Unite
-              </span>
-              <p className="font-black-letter" style={{ fontSize: 26, marginTop: 6, color: "#7a1220" }}>&</p>
-              <h1
-                style={{
-                  fontFamily: "'Cinzel', serif",
-                  fontWeight: 600,
-                  fontSize: 22,
-                  marginTop: 4,
-                  color: "#1c1a15",
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  lineHeight: 1.2,
-                }}
-              >
-                {COUPLE.groom.nickname} & {COUPLE.bride.nickname}
-              </h1>
-              <div className="wi-goldline" style={{ width: 60, height: 1, margin: "12px auto" }} />
-              {guestName && (
-                <p style={{ fontSize: 12, color: "#4a0a12", fontStyle: "italic" }}>
-                  To, <span style={{ fontWeight: 600 }}>{guestName}</span>
-                </p>
-              )}
-              <p style={{ fontSize: 11, color: "#7a1220", letterSpacing: "0.28em", marginTop: 10 }}>
-                {EVENT.date.toUpperCase()}
+            <div className="wi-inkline h-px w-16 opacity-70" />
+            <p className="font-serif mt-4 text-[10px]" style={{ letterSpacing: "0.4em", color: "#5a3a1a" }}>
+              TWO GREAT HOUSES UNITE
+            </p>
+            <p className="font-black-letter mt-6 text-5xl" style={{ color: "#3a1a08" }}>&amp;</p>
+            <h1 className="font-serif mt-3 text-2xl" style={{ letterSpacing: "0.12em", color: "#2a1408" }}>
+              {COUPLE.groom.nickname} &amp; {COUPLE.bride.nickname}
+            </h1>
+            <div className="wi-inkline mt-5 h-px w-24 opacity-70" />
+            {guestName && (
+              <p className="mt-4 text-xs italic" style={{ color: "#4a2810" }}>
+                unto {guestName}
               </p>
-            </div>
+            )}
+            <p className="font-serif mt-4 text-[10px]" style={{ letterSpacing: "0.35em", color: "#5a3a1a" }}>
+              {EVENT.date.toUpperCase()}
+            </p>
 
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.96 }}
+            <button
               onClick={(e) => { e.stopPropagation(); onOpen(); }}
+              className="mt-8"
               style={{
-                borderRadius: 999,
-                padding: "11px 26px",
+                borderRadius: 2,
+                padding: "10px 22px",
+                fontFamily: "'Cinzel', serif",
                 fontSize: 10,
-                letterSpacing: "0.28em",
+                letterSpacing: "0.35em",
                 textTransform: "uppercase",
-                color: "#efe3c2",
-                background: "linear-gradient(135deg,#7a1220,#4a0a12)",
-                border: "1px solid #c9a24a",
-                boxShadow: "0 10px 22px rgba(0,0,0,0.35)",
-                cursor: "pointer",
+                color: "#f2dfae",
+                background: "linear-gradient(135deg,#5a0a10 0%, #2a0508 100%)",
+                border: "1px solid #8a6a28",
+                boxShadow: "0 10px 22px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,200,140,0.15)",
               }}
             >
               Enter the Great Hall
-            </motion.button>
+            </button>
           </motion.div>
 
-          {/* Triangular envelope flap — peels back once seal cracks */}
+          {/* Triangular flap that peels back */}
           <motion.div
             initial={false}
-            animate={{ rotateX: opening ? -172 : 0 }}
-            transition={{ duration: 1.0, ease: [0.6, 0, 0.35, 1], delay: opening ? 0.15 : 0 }}
-            className="absolute left-0 right-0 top-0"
+            animate={opening ? { rotateX: -178 } : { rotateX: 0 }}
+            transition={{ duration: 0.9, ease: [0.7, 0, 0.3, 1] }}
+            className="wi-ancient wi-ancient-stains wi-ancient-fiber absolute left-0 right-0 top-0 flex items-start justify-center"
             style={{
-              height: "62%",
+              height: "58%",
               transformOrigin: "top center",
-              transformStyle: "preserve-3d",
-              zIndex: 3,
-              pointerEvents: opening ? "none" : "auto",
-              clipPath: "polygon(0 0, 100% 0, 100% 55%, 50% 100%, 0 55%)",
-              ...parchment,
-              borderRadius: 0,
+              clipPath: "polygon(0 0, 100% 0, 50% 100%)",
+              borderBottom: "1px solid rgba(60,30,10,0.6)",
+              boxShadow: "inset 0 0 30px rgba(30,15,0,0.55)",
+              backfaceVisibility: "hidden",
             }}
           >
             <p
-              className="absolute left-0 right-0 text-center"
-              style={{
-                top: "12%",
-                fontFamily: "'Cinzel', serif",
-                fontWeight: 600,
-                fontSize: 15,
-                letterSpacing: "0.3em",
-                color: "#1c1a15",
-                textTransform: "uppercase",
-              }}
+              className="font-black-letter mt-8 text-lg"
+              style={{ color: "#3a1a08", letterSpacing: "0.05em", textShadow: "0 1px 0 rgba(255,220,160,0.35)" }}
             >
               Wedding is Coming
             </p>
 
-            {/* Wax seal — image medallion, cracks in halves */}
+            {/* Wax seal */}
             <div
-              className="absolute left-1/2 wi-seal"
+              className="wi-seal absolute"
               style={{
-                bottom: "4%",
-                width: "32%",
-                aspectRatio: "1 / 1",
-                transform: "translateX(-50%)",
-                pointerEvents: cracked ? "none" : "auto",
-                borderRadius: "50%",
+                top: "38%",
+                left: "50%",
+                width: 96,
+                height: 96,
+                transform: "translate(-50%, -20%)",
               }}
             >
-              {/* Left half */}
               <motion.div
                 initial={false}
-                animate={
-                  cracked
-                    ? { rotate: -26, x: "-13%", y: "5%", opacity: opening ? 0 : 1 }
-                    : { rotate: 0, x: 0, y: 0, opacity: 1 }
-                }
-                transition={{ duration: 0.55, ease: [0.6, 0, 0.35, 1] }}
-                className="absolute inset-0"
+                animate={cracked ? { x: -34, y: 8, rotate: -22, opacity: 0.95 } : { x: 0, y: 0, rotate: 0 }}
+                transition={{ duration: 0.55, ease: [0.7, 0, 0.3, 1] }}
                 style={{
-                  clipPath: "polygon(0 0, 52% 0, 46% 30%, 54% 55%, 44% 80%, 50% 100%, 0 100%)",
-                  filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.4))",
+                  position: "absolute", inset: 0,
+                  clipPath: "polygon(0 0, 52% 0, 46% 100%, 0 100%)",
                 }}
               >
                 <WaxDisc />
               </motion.div>
-
-              {/* Right half */}
               <motion.div
                 initial={false}
-                animate={
-                  cracked
-                    ? { rotate: 26, x: "13%", y: "6%", opacity: opening ? 0 : 1 }
-                    : { rotate: 0, x: 0, y: 0, opacity: 1 }
-                }
-                transition={{ duration: 0.55, ease: [0.6, 0, 0.35, 1] }}
-                className="absolute inset-0"
+                animate={cracked ? { x: 34, y: 8, rotate: 22, opacity: 0.95 } : { x: 0, y: 0, rotate: 0 }}
+                transition={{ duration: 0.55, ease: [0.7, 0, 0.3, 1] }}
                 style={{
-                  clipPath: "polygon(52% 0, 100% 0, 100% 100%, 50% 100%, 44% 80%, 54% 55%, 46% 30%)",
-                  filter: "drop-shadow(0 6px 10px rgba(0,0,0,0.4))",
+                  position: "absolute", inset: 0,
+                  clipPath: "polygon(52% 0, 100% 0, 100% 100%, 46% 100%)",
                 }}
               >
                 <WaxDisc />
               </motion.div>
-
-              {/* Small chip that pops off */}
-              <motion.div
-                initial={false}
-                animate={
-                  cracked
-                    ? { x: 8, y: 22, rotate: 55, opacity: opening ? 0 : 1 }
-                    : { x: 0, y: 0, rotate: 0, opacity: 0 }
-                }
-                transition={{ duration: 0.5 }}
-                style={{
-                  position: "absolute",
-                  left: "48%",
-                  top: "62%",
-                  width: 11,
-                  height: 7,
-                  borderRadius: 3,
-                  background: "radial-gradient(circle at 40% 40%, #b53030, #4a0a12)",
-                  boxShadow: "0 3px 6px rgba(0,0,0,0.45)",
-                }}
-              />
             </div>
           </motion.div>
         </div>
 
-        {/* Tap hint */}
-        <motion.div
-          initial={false}
-          animate={{ opacity: phase === "idle" ? 1 : 0 }}
-          transition={{ duration: 0.3 }}
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: "-12%",
-            textAlign: "center",
-            pointerEvents: "none",
-          }}
-        >
-          <TapHint />
-        </motion.div>
+        {phase === "idle" && (
+          <div className="absolute -bottom-16 left-1/2 -translate-x-1/2">
+            <TapHint />
+          </div>
+        )}
       </div>
     </motion.div>
   );
 }
 
-// Wax medallion — now uses your image from assets, clipped by each half above.
+// Wax medallion — uses your seal image from assets, clipped into two halves above.
 function WaxDisc() {
   return (
     <div
       style={{
-        position: "absolute",
-        inset: 0,
-        backgroundImage: `url(${SEAL_URL})`,
-        backgroundSize: "contain",
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "center",
+        width: "100%", height: "100%",
+        borderRadius: "50%",
+        background:
+          "radial-gradient(circle at 35% 30%, #b8202a 0%, #7a1220 45%, #3a0810 100%)",
+        boxShadow:
+          "0 6px 14px rgba(0,0,0,0.55), inset 0 2px 6px rgba(255,180,150,0.4), inset 0 -6px 12px rgba(0,0,0,0.55)",
+        border: "1px solid #2a0508",
+        overflow: "hidden",
+        display: "flex", alignItems: "center", justifyContent: "center",
       }}
-    />
+    >
+      <img
+        src={SEAL_URL}
+        alt="House seal"
+        style={{ width: "70%", height: "70%", objectFit: "contain", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.6))" }}
+      />
+    </div>
   );
 }
-
-
-
 
 // ─────────────────────────────────────────────────────────
 // MAIN
@@ -1051,6 +1085,11 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
         </section>
 
         <SectionDivider />
+
+        {/* GUEST PHOTO UPLOAD */}
+        <GuestUploadSection />
+
+        <SectionDivider symbol="✦" />
 
         {/* RSVP */}
         <section ref={sectionRefs.rsvp}>
