@@ -517,7 +517,7 @@ function GuestUploadSection() {
       <div
         className="mx-auto mt-8 overflow-hidden"
         style={{
-          maxWidth: 340,
+          maxWidth: 220,
           borderRadius: 8,
           border: "1px solid #7a5a2c",
           boxShadow: "0 18px 32px -14px rgba(60,40,15,0.55), inset 0 0 0 1px rgba(201,162,74,0.4)",
