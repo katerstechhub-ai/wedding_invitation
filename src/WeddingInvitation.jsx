@@ -84,7 +84,17 @@ function GlobalInviteStyles() {
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=IM+Fell+English:ital@0;1&family=UnifrakturMaguntia&display=swap');
 
+      /* Guard against any decorative element causing horizontal overflow —
+         without this, a few px of overflow can make mobile browsers
+         rubber-band/bounce horizontally on zoom, resize, or rotate. */
+      html, body {
+        overflow-x: hidden;
+        max-width: 100%;
+      }
+
       .wi-root {
+        overflow-x: hidden;
+        max-width: 100%;
         font-family: 'IM Fell English', 'Cormorant Garamond', Georgia, serif;
         font-weight: 400;
         letter-spacing: 0.01em;
@@ -964,7 +974,7 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
         <SectionDivider />
 
         {/* WITH HONOR */}
-        <section className="relative px-10 text-center">
+        <section className="relative overflow-hidden px-10 text-center">
           <FloralCorner className="absolute -left-2 top-0 h-20 w-20 opacity-50" />
           <FloralCorner className="absolute -right-2 top-0 h-20 w-20 opacity-50" flip />
           <motion.h3 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
