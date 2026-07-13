@@ -129,9 +129,6 @@ function GlobalInviteStyles() {
           url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='r'><feTurbulence baseFrequency='0.02' numOctaves='2'/><feDisplacementMap in='SourceGraphic' scale='30'/></filter><rect width='100%25' height='100%25' fill='black' filter='url(%23r)'/></svg>");
         -webkit-mask-composite: source-over;
         mask-image: radial-gradient(ellipse at 50% 50%, #000 62%, transparent 78%);
-        box-shadow:
-          inset 0 0 40px rgba(30,10,0,0.75),
-          inset 0 0 90px rgba(60,25,5,0.55);
       }
       .wi-scorched::after {
         content:""; position:absolute; inset:0; pointer-events:none;
@@ -151,16 +148,11 @@ function GlobalInviteStyles() {
 
       @keyframes wi-tap-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
       @keyframes wi-tap-ripple { 0% { transform: scale(.55); opacity:.85; } 100% { transform: scale(1.9); opacity:0; } }
-      @keyframes wi-seal-glow {
-        0%,100% { filter: drop-shadow(0 8px 14px rgba(0,0,0,.55)) drop-shadow(0 0 0 rgba(180,25,25,0)); }
-        50%     { filter: drop-shadow(0 8px 14px rgba(0,0,0,.55)) drop-shadow(0 0 14px rgba(180,25,25,.6)); }
-      }
       .wi-tap-icon { animation: wi-tap-bob 1.6s ease-in-out infinite; }
       .wi-tap-ripple { animation: wi-tap-ripple 1.6s ease-out infinite; }
-      .wi-seal { animation: wi-seal-glow 2.8s ease-in-out infinite; will-change: filter; }
 
       @media (prefers-reduced-motion: reduce) {
-        .wi-tap-icon, .wi-tap-ripple, .wi-seal, .wi-candle { animation: none; }
+        .wi-tap-icon, .wi-tap-ripple, .wi-candle { animation: none; }
       }
     `}</style>
   );
@@ -178,16 +170,12 @@ function FloralCorner({ className = "", flip = false, tone = "ink" }) {
     <svg
       viewBox="0 0 180 180"
       className={className}
-      style={{ transform: flip ? "scaleX(-1)" : "none" }}
-      fill="none"
-      stroke={c.line}
-      strokeWidth="1"
-      strokeLinecap="round"
+      style={{ transform: flip ? "scaleX(-1)" : undefined }}
     >
-      <path d="M10 170 Q 40 120, 90 100 T 170 30" />
-      <path d="M25 170 Q 55 130, 100 115 T 170 55" opacity="0.6" />
+      <path d="M10 170 C 40 120, 80 80, 170 10" stroke={c.line} strokeWidth="1.2" fill="none" />
+      <path d="M10 170 C 60 140, 100 100, 170 40" stroke={c.line} strokeWidth="0.8" fill="none" opacity="0.6" />
       {[[40,150],[65,125],[95,105],[125,85],[155,55]].map(([x,y],i)=>(
-        <circle key={i} cx={x} cy={y} r="2" fill={c.dot} stroke="none" />
+        <circle key={i} cx={x} cy={y} r="2" fill={c.dot} />
       ))}
     </svg>
   );
@@ -195,10 +183,10 @@ function FloralCorner({ className = "", flip = false, tone = "ink" }) {
 
 function SectionDivider({ symbol = "✦" }) {
   return (
-    <div className="my-10 flex items-center justify-center gap-3">
-      <span className="wi-goldline h-px w-16" />
-      <span className="font-serif text-xs" style={{ color: "#7a1220" }}>{symbol}</span>
-      <span className="wi-goldline h-px w-16" />
+    <div className="my-10 flex items-center justify-center gap-3 px-8">
+      <div className="wi-goldline h-px flex-1" />
+      <span style={{ color: "#7a1220", fontSize: 14 }}>{symbol}</span>
+      <div className="wi-goldline h-px flex-1" />
     </div>
   );
 }
@@ -206,7 +194,7 @@ function SectionDivider({ symbol = "✦" }) {
 const FALLBACK_PHOTO =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'><rect width='100%' height='100%' fill='#d9c493'/><text x='50%' y='50%' text-anchor='middle' fill='#7a5a2c' font-family='serif' font-size='20'>Photo</text></svg>`
+    `<svg xmlns='http://www.w3.org/2000/svg' width='400' height='600'><rect width='100%' height='100%' fill='#c9a866'/><text x='50%' y='50%' text-anchor='middle' fill='#3a2a17' font-family='serif' font-size='24'>Photo</text></svg>`
   );
 
 function ArchFrame({ src, alt, className = "", delay = 0 }) {
@@ -214,15 +202,12 @@ function ArchFrame({ src, alt, className = "", delay = 0 }) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{ duration: 0.9, delay }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.7, delay }}
       className={`relative overflow-hidden ${className}`}
       style={{
-        borderTopLeftRadius: "50% 30%",
-        borderTopRightRadius: "50% 30%",
+        borderRadius: "50% 50% 8px 8px / 40% 40% 8px 8px",
         border: "1px solid #7a5a2c",
-        boxShadow: "0 18px 30px -18px rgba(60,40,15,0.6), inset 0 0 0 1px rgba(201,162,74,0.4)",
-        background: "#1c1a15",
       }}
     >
       <img
@@ -263,16 +248,16 @@ function CountdownBlock({ value, label }) {
   return (
     <div className="flex flex-col items-center">
       <div
-        className="flex h-16 w-16 items-center justify-center rounded-lg"
+        className="flex h-16 w-16 items-center justify-center rounded-lg font-serif text-2xl"
         style={{
           background: "linear-gradient(160deg,#1c1a15,#2a2b1e)",
-          border: "1px solid #c9a24a",
           color: "#efe3c2",
+          border: "1px solid #c9a24a",
         }}
       >
-        <span className="font-serif text-xl">{str}</span>
+        {str}
       </div>
-      <span className="mt-2 text-[9px] uppercase" style={{ letterSpacing: "0.3em", color: "#7a5a2c" }}>
+      <span className="mt-2 text-[10px] uppercase" style={{ color: "#7a5a2c", letterSpacing: "0.25em" }}>
         {label}
       </span>
     </div>
@@ -291,11 +276,10 @@ function BottomNav({ active, onNavigate }) {
   ];
   return (
     <div
-      className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-full px-2 py-2"
+      className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-full px-2 py-1.5"
       style={{
-        background: "linear-gradient(160deg,#1c1a15,#2a2b1e)",
+        background: "linear-gradient(135deg,#1c1a15,#0a0a07)",
         border: "1px solid #c9a24a",
-        boxShadow: "0 15px 30px -10px rgba(0,0,0,0.5)",
       }}
     >
       {items.map((item) => {
@@ -310,12 +294,12 @@ function BottomNav({ active, onNavigate }) {
           >
             {isActive && (
               <span
-                className="absolute inset-0 rounded-full"
-                style={{ background: "linear-gradient(135deg,#7a1220,#4a0a12)", zIndex: -1 }}
+                className="absolute inset-0 -z-0 rounded-full"
+                style={{ background: "linear-gradient(135deg,#7a1220,#4a0a12)" }}
               />
             )}
-            <Icon size={14} />
-            {item.label}
+            <Icon className="relative" size={14} />
+            <span className="relative">{item.label}</span>
           </button>
         );
       })}
@@ -355,15 +339,20 @@ function WishesForm() {
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      className="mx-6 rounded-3xl p-6"
-      style={{ background: "#f4e6bd", border: "1px solid #7a5a2c" }}
+      transition={{ duration: 0.7 }}
+      className="mx-6 rounded-3xl px-6 py-8"
+      style={{
+        background: "linear-gradient(180deg,#f4e6bd,#d9c088)",
+        border: "1px solid #7a5a2c",
+      }}
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="text-[10px] uppercase" style={{ letterSpacing: "0.3em", color: "#7a5a2c" }}>
+          <label className="text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.3em" }}>
             Your Name
           </label>
           <input
+            type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="mt-1 w-full bg-transparent pb-2 text-sm outline-none"
@@ -373,14 +362,14 @@ function WishesForm() {
         </div>
 
         <div>
-          <label className="text-[10px] uppercase" style={{ letterSpacing: "0.3em", color: "#7a5a2c" }}>
+          <label className="text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.3em" }}>
             Will you answer the summons?
           </label>
           <div className="mt-2 flex gap-2">
             {["yes", "maybe", "no"].map((opt) => (
               <button
-                key={opt}
                 type="button"
+                key={opt}
                 onClick={() => setAttending(opt)}
                 className="flex-1 rounded-full px-3 py-1.5 text-xs capitalize transition"
                 style={
@@ -396,7 +385,7 @@ function WishesForm() {
         </div>
 
         <div>
-          <label className="text-[10px] uppercase" style={{ letterSpacing: "0.3em", color: "#7a5a2c" }}>
+          <label className="text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.3em" }}>
             A word for the betrothed *
           </label>
           <textarea
@@ -414,7 +403,7 @@ function WishesForm() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           disabled={status === "sending"}
-          className="w-full rounded-full py-3 text-xs uppercase shadow-md"
+          className="w-full rounded-full py-3 text-xs uppercase"
           style={{
             letterSpacing: "0.28em",
             color: "#efe3c2",
@@ -466,7 +455,6 @@ function GuestUploadSection() {
           maxWidth: 220,
           borderRadius: 8,
           border: "1px solid #7a5a2c",
-          boxShadow: "0 18px 32px -14px rgba(60,40,15,0.55), inset 0 0 0 1px rgba(201,162,74,0.4)",
           background: "#1c1a15",
         }}
       >
@@ -483,7 +471,7 @@ function GuestUploadSection() {
           href={GUEST_UPLOAD_URL}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-[11px] uppercase shadow-md"
+          className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-[11px] uppercase"
           style={{
             letterSpacing: "0.3em",
             color: "#efe3c2",
@@ -526,7 +514,7 @@ function TapHint({ label = "Break the Seal" }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// Wax medallion
+// Wax medallion (no shadows)
 // ─────────────────────────────────────────────────────────
 function WaxDisc() {
   return (
@@ -536,8 +524,6 @@ function WaxDisc() {
         borderRadius: "50%",
         background:
           "radial-gradient(circle at 35% 30%, #b8202a 0%, #7a1220 45%, #3a0810 100%)",
-        boxShadow:
-          "0 6px 14px rgba(0,0,0,0.55), inset 0 2px 6px rgba(255,180,150,0.4), inset 0 -6px 12px rgba(0,0,0,0.55)",
         border: "1px solid #2a0508",
         overflow: "hidden",
         display: "flex", alignItems: "center", justifyContent: "center",
@@ -546,14 +532,14 @@ function WaxDisc() {
       <img
         src={SEAL_URL}
         alt="House seal"
-        style={{ width: "70%", height: "70%", objectFit: "contain", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.6))" }}
+        style={{ width: "70%", height: "70%", objectFit: "contain" }}
       />
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────
-// Cover screen
+// Cover screen (shadows removed)
 // ─────────────────────────────────────────────────────────
 function CoverScreen({ onOpen, guestName }) {
   const [phase, setPhase] = useState("idle");
@@ -568,7 +554,6 @@ function CoverScreen({ onOpen, guestName }) {
     setTimeout(() => setPhase("revealed"), 1500);
   };
 
-  // Jagged crack path so seal halves look torn, not sliced
   const LEFT_HALF_CLIP =
     "polygon(0 0, 50% 0, 46% 8%, 54% 18%, 44% 30%, 52% 42%, 43% 55%, 51% 68%, 44% 82%, 50% 100%, 0 100%)";
   const RIGHT_HALF_CLIP =
@@ -629,10 +614,6 @@ function CoverScreen({ onOpen, guestName }) {
           style={{
             borderRadius: 6,
             border: revealed ? "1px solid #7a5a2c" : "1px solid #3a2410",
-            boxShadow: revealed
-              ? "0 20px 40px -20px rgba(90,60,20,0.35)"
-              : "0 40px 60px -20px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(80,50,20,0.4)",
-            transition: "box-shadow 0.6s ease, border-color 0.6s ease",
           }}
         >
           <div
@@ -640,10 +621,6 @@ function CoverScreen({ onOpen, guestName }) {
             style={{
               inset: 18,
               border: "1px solid rgba(120,85,30,0.55)",
-              boxShadow: revealed
-                ? "inset 0 0 0 3px rgba(120,85,30,0.2)"
-                : "inset 0 0 0 3px rgba(60,35,10,0.35)",
-              transition: "box-shadow 0.6s ease",
             }}
           />
 
@@ -672,7 +649,6 @@ function CoverScreen({ onOpen, guestName }) {
               {EVENT.date.toUpperCase()}
             </p>
 
-            {/* Enter button with pulsing ring + tap-hand icon + hint */}
             <div className="relative mt-8">
               <motion.span
                 className="pointer-events-none absolute inset-0 rounded-sm"
@@ -695,7 +671,6 @@ function CoverScreen({ onOpen, guestName }) {
                   color: "#f2dfae",
                   background: "linear-gradient(135deg,#5a0a10 0%, #2a0508 100%)",
                   border: "1px solid #8a6a28",
-                  boxShadow: "0 10px 22px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,200,140,0.15)",
                 }}
               >
                 <FaHandPointer size={11} />
@@ -726,20 +701,19 @@ function CoverScreen({ onOpen, guestName }) {
               transformOrigin: "top center",
               clipPath: "polygon(0 0, 100% 0, 50% 100%)",
               borderBottom: "1px solid rgba(60,30,10,0.6)",
-              boxShadow: "inset 0 0 30px rgba(30,15,0,0.55)",
               backfaceVisibility: "hidden",
               pointerEvents: revealed ? "none" : "auto",
             }}
           >
             <p
               className="font-black-letter mt-8 text-lg"
-              style={{ color: "#3a1a08", letterSpacing: "0.05em", textShadow: "0 1px 0 rgba(255,220,160,0.35)" }}
+              style={{ color: "#3a1a08", letterSpacing: "0.05em" }}
             >
               Wedding is Coming
             </p>
 
             <div
-              className="wi-seal absolute"
+              className="absolute"
               style={{
                 top: "38%",
                 left: "50%",
@@ -755,7 +729,6 @@ function CoverScreen({ onOpen, guestName }) {
                 style={{
                   position: "absolute", inset: 0,
                   clipPath: LEFT_HALF_CLIP,
-                  filter: cracked ? "drop-shadow(2px 2px 3px rgba(0,0,0,0.5))" : "none",
                 }}
               >
                 <WaxDisc />
@@ -767,7 +740,6 @@ function CoverScreen({ onOpen, guestName }) {
                 style={{
                   position: "absolute", inset: 0,
                   clipPath: RIGHT_HALF_CLIP,
-                  filter: cracked ? "drop-shadow(-2px 2px 3px rgba(0,0,0,0.5))" : "none",
                 }}
               >
                 <WaxDisc />
@@ -858,7 +830,7 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
         {opened && BG_AMBIENT_MUSIC_URL && (
           <button
             onClick={() => setMuted((m) => !m)}
-            className="fixed right-4 top-4 z-40 flex h-9 w-9 items-center justify-center rounded-full shadow"
+            className="fixed right-4 top-4 z-40 flex h-9 w-9 items-center justify-center rounded-full"
             style={{ background: "linear-gradient(135deg,#7a1220,#4a0a12)", color: "#efe3c2", border: "1px solid #c9a24a" }}
           >
             {muted ? <FaVolumeMute size={16} /> : <FaVolumeUp size={16} />}
@@ -897,7 +869,6 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
           style={{
             background: "linear-gradient(160deg, #1c1a15 0%, #2a2b1e 100%)",
             border: "1px solid #c9a24a",
-            boxShadow: "0 20px 40px -25px rgba(0,0,0,0.7)",
           }}
         >
           <FloralCorner className="absolute -right-6 -top-6 h-24 w-24 opacity-40" tone="gold" />
@@ -971,7 +942,6 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
           style={{
             background: "linear-gradient(180deg, #f4e6bd 0%, #d9c088 100%)",
             border: "1px solid #7a5a2c",
-            boxShadow: "0 25px 50px -25px rgba(30,20,10,0.55)",
           }}
         >
           <FloralCorner className="absolute -top-4 -right-4 h-20 w-20 opacity-50" tone="gold" flip />
@@ -1006,7 +976,7 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
 
           <motion.a whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}
             href={EVENT.mapsUrl} target="_blank" rel="noreferrer"
-            className="mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 text-[10px] uppercase shadow-md"
+            className="mt-6 inline-flex items-center gap-2 rounded-full px-6 py-3 text-[10px] uppercase"
             style={{
               letterSpacing: "0.3em",
               color: "#efe3c2",
