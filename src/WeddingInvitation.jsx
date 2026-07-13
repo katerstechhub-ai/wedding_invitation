@@ -3,29 +3,16 @@ import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
 import {
   FaInstagram, FaMapMarkerAlt, FaVolumeUp, FaVolumeMute, FaHeart,
   FaHome, FaUserFriends, FaCalendarAlt, FaEnvelopeOpenText, FaLandmark,
-  FaCamera, FaScroll,
+  FaCamera, FaScroll, FaHandPointer,
 } from "react-icons/fa";
 
 import pamsPhoto from "./assets/pams.jpeg";
 import bizzerPhoto from "./assets/Bizzer.jpeg";
 import SEAL_URL from "./assets/stark-seal.png";
-// TODO: drop your screenshot into src/assets/ and update this import
 import guestUploadPreview from "./assets/guest-upload-preview.jpeg";
 
-
-/**
- * Wedding Invitation — Game of Thrones theme.
- * Palette:  parchment #efe3c2 / aged #d9c493, blood #7a1220, gold #c9a24a,
- *           ink #1c1a15, moss shadow #2a2b1e.
- * Fonts:    Cinzel (display, Trajan-like), UnifrakturMaguntia (blackletter
- *           accents), IM Fell English (body serif).
- * Envelope: ancient parchment scroll, charred/burnt edges, blood-red wax
- *           seal with monogram, single framed "Wedding is Coming" line,
- *           direwolf-ink flourish corners, drifting embers.
- */
-
 // ─────────────────────────────────────────────────────────
-// DATA (unchanged)
+// DATA
 // ─────────────────────────────────────────────────────────
 const COUPLE = {
   hashtag: "#BIZZERPAMSWEDDING",
@@ -72,67 +59,47 @@ const HERO_VIDEO_POSTER =
 
 const BG_AMBIENT_MUSIC_URL = "";
 const RSVP_EMAIL_ENDPOINT = "https://formspree.io/f/REPLACE_WITH_YOUR_FORM_ID";
-
-// Guests are sent here to upload their own photos from the event
 const GUEST_UPLOAD_URL = "https://mediahub-frontend-4tdp.vercel.app";
 
 // ─────────────────────────────────────────────────────────
-// Global styles — GOT typography + parchment + ancient scroll effects
+// Global styles
 // ─────────────────────────────────────────────────────────
 function GlobalInviteStyles() {
   return (
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=IM+Fell+English:ital@0;1&family=UnifrakturMaguntia&display=swap');
 
-      /* Guard against any decorative element causing horizontal overflow —
-         without this, a few px of overflow can make mobile browsers
-         rubber-band/bounce horizontally on zoom, resize, or rotate. */
-      html, body {
-        overflow-x: hidden;
-        max-width: 100%;
-      }
+      html, body { overflow-x: hidden; max-width: 100%; }
 
       .wi-root {
-        overflow-x: hidden;
-        max-width: 100%;
+        overflow-x: hidden; max-width: 100%;
         font-family: 'IM Fell English', 'Cormorant Garamond', Georgia, serif;
-        font-weight: 400;
-        letter-spacing: 0.01em;
+        font-weight: 400; letter-spacing: 0.01em;
         -webkit-font-smoothing: antialiased;
       }
       .wi-root .font-serif {
         font-family: 'Cinzel', 'Trajan Pro', serif !important;
-        font-weight: 500;
-        letter-spacing: 0.06em;
+        font-weight: 500; letter-spacing: 0.06em;
       }
       .wi-root .font-black-letter {
         font-family: 'UnifrakturMaguntia', 'Cinzel', serif !important;
         letter-spacing: 0.02em;
       }
 
-      /* Aged parchment stains + fiber grain (used throughout the page) */
       .wi-grain { position: relative; }
       .wi-grain::after {
-        content: "";
-        position: absolute; inset: 0;
-        pointer-events: none;
+        content: ""; position: absolute; inset: 0; pointer-events: none;
         background-image:
           radial-gradient(ellipse at 12% 18%, rgba(90,50,20,0.18), transparent 40%),
           radial-gradient(ellipse at 88% 82%, rgba(70,35,15,0.22), transparent 45%),
           radial-gradient(circle at 60% 30%, rgba(120,70,25,0.10), transparent 35%),
           url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.32  0 0 0 0 0.20  0 0 0 0 0.08  0 0 0 0.09 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-        mix-blend-mode: multiply;
-        opacity: 0.55;
+        mix-blend-mode: multiply; opacity: 0.55;
       }
 
-      .wi-goldline {
-        background: linear-gradient(90deg, transparent, #9c7a2e 20%, #e2c874 50%, #9c7a2e 80%, transparent);
-      }
-      .wi-inkline {
-        background: linear-gradient(90deg, transparent, #2a1a0a 20%, #5a3a1a 50%, #2a1a0a 80%, transparent);
-      }
+      .wi-goldline { background: linear-gradient(90deg, transparent, #9c7a2e 20%, #e2c874 50%, #9c7a2e 80%, transparent); }
+      .wi-inkline  { background: linear-gradient(90deg, transparent, #2a1a0a 20%, #5a3a1a 50%, #2a1a0a 80%, transparent); }
 
-      /* ---------- ANCIENT PARCHMENT (cover screen) ---------- */
       .wi-ancient {
         background:
           radial-gradient(ellipse at 15% 20%, rgba(90,45,10,0.35), transparent 55%),
@@ -156,14 +123,12 @@ function GlobalInviteStyles() {
           url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.20  0 0 0 0 0.10  0 0 0 0 0.02  0 0 0 0.45 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
         mix-blend-mode: multiply; opacity: .75;
       }
-      /* Charred/torn edges */
       .wi-burnt-edge {
         -webkit-mask-image:
           radial-gradient(ellipse at 50% 50%, #000 62%, transparent 78%),
           url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='r'><feTurbulence baseFrequency='0.02' numOctaves='2'/><feDisplacementMap in='SourceGraphic' scale='30'/></filter><rect width='100%25' height='100%25' fill='black' filter='url(%23r)'/></svg>");
         -webkit-mask-composite: source-over;
-        mask-image:
-          radial-gradient(ellipse at 50% 50%, #000 62%, transparent 78%);
+        mask-image: radial-gradient(ellipse at 50% 50%, #000 62%, transparent 78%);
         box-shadow:
           inset 0 0 40px rgba(30,10,0,0.75),
           inset 0 0 90px rgba(60,25,5,0.55);
@@ -202,30 +167,28 @@ function GlobalInviteStyles() {
 }
 
 // ─────────────────────────────────────────────────────────
-// Ink flourish corner (replaces floral) — thin sepia lines + house sigil dot
+// Decorative corner
 // ─────────────────────────────────────────────────────────
 function FloralCorner({ className = "", flip = false, tone = "ink" }) {
   const c =
     tone === "gold"
-      ? { line: "#9c7a2e", petal: "#f4e6bd", petalStroke: "#c9a24a", dot: "#7a1220" }
-      : { line: "#3a2a17", petal: "#efe3c2", petalStroke: "#7a5a2c", dot: "#7a1220" };
+      ? { line: "#9c7a2e", dot: "#7a1220" }
+      : { line: "#3a2a17", dot: "#7a1220" };
   return (
     <svg
-      viewBox="0 0 200 200"
+      viewBox="0 0 180 180"
       className={className}
       style={{ transform: flip ? "scaleX(-1)" : "none" }}
+      fill="none"
+      stroke={c.line}
+      strokeWidth="1"
+      strokeLinecap="round"
     >
-      <g fill="none" stroke={c.line} strokeWidth="1.1" strokeLinecap="round">
-        <path d="M10 190 C 40 150, 60 120, 80 90 S 140 40, 190 10" />
-        <path d="M20 190 C 50 160, 80 130, 110 110" opacity="0.6" />
-        <path d="M35 175 C 55 160, 75 150, 100 145" opacity="0.5" />
-        {[[40,150],[65,125],[95,105],[125,85],[155,55]].map(([x,y],i)=>(
-          <g key={i}>
-            <circle cx={x} cy={y} r="3.2" fill={c.petal} stroke={c.petalStroke} strokeWidth="0.9" />
-            <circle cx={x} cy={y} r="1" fill={c.dot} stroke="none" />
-          </g>
-        ))}
-      </g>
+      <path d="M10 170 Q 40 120, 90 100 T 170 30" />
+      <path d="M25 170 Q 55 130, 100 115 T 170 55" opacity="0.6" />
+      {[[40,150],[65,125],[95,105],[125,85],[155,55]].map(([x,y],i)=>(
+        <circle key={i} cx={x} cy={y} r="2" fill={c.dot} stroke="none" />
+      ))}
     </svg>
   );
 }
@@ -233,37 +196,33 @@ function FloralCorner({ className = "", flip = false, tone = "ink" }) {
 function SectionDivider({ symbol = "✦" }) {
   return (
     <div className="my-10 flex items-center justify-center gap-3">
-      <span className="wi-goldline block h-px w-16" />
-      <span className="font-serif text-lg" style={{ color: "#7a1220" }}>{symbol}</span>
-      <span className="wi-goldline block h-px w-16" />
+      <span className="wi-goldline h-px w-16" />
+      <span className="font-serif text-xs" style={{ color: "#7a1220" }}>{symbol}</span>
+      <span className="wi-goldline h-px w-16" />
     </div>
   );
 }
 
-// Fallback photo
 const FALLBACK_PHOTO =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' width='320' height='420' viewBox='0 0 320 420'>
-       <rect width='100%' height='100%' fill='#e8d7a8'/>
-       <text x='50%' y='50%' text-anchor='middle' fill='#7a5a2c' font-family='serif' font-size='18'>Photo</text>
-     </svg>`
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 400'><rect width='100%' height='100%' fill='#d9c493'/><text x='50%' y='50%' text-anchor='middle' fill='#7a5a2c' font-family='serif' font-size='20'>Photo</text></svg>`
   );
 
-// Arch frame — sepia border + gold hairline
 function ArchFrame({ src, alt, className = "", delay = 0 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.3 }}
-      transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: 0.9, delay }}
       className={`relative overflow-hidden ${className}`}
       style={{
-        borderRadius: "48% 48% 8px 8px / 32% 32% 8px 8px",
+        borderTopLeftRadius: "50% 30%",
+        borderTopRightRadius: "50% 30%",
         border: "1px solid #7a5a2c",
-        boxShadow: "0 18px 40px -20px rgba(30,20,10,0.55), inset 0 0 0 3px #efe3c2, inset 0 0 0 4px #c9a24a",
-        filter: "sepia(0.15)",
+        boxShadow: "0 18px 30px -18px rgba(60,40,15,0.6), inset 0 0 0 1px rgba(201,162,74,0.4)",
+        background: "#1c1a15",
       }}
     >
       <img
@@ -304,28 +263,16 @@ function CountdownBlock({ value, label }) {
   return (
     <div className="flex flex-col items-center">
       <div
-        className="flex h-16 w-14 items-center justify-center rounded-md"
+        className="flex h-16 w-16 items-center justify-center rounded-lg"
         style={{
-          background: "linear-gradient(180deg, #1c1a15 0%, #2a2b1e 100%)",
+          background: "linear-gradient(160deg,#1c1a15,#2a2b1e)",
           border: "1px solid #c9a24a",
-          boxShadow: "inset 0 0 0 1px #7a5a2c, 0 10px 20px -10px rgba(0,0,0,0.6)",
+          color: "#efe3c2",
         }}
       >
-        <AnimatePresence mode="popLayout">
-          <motion.span
-            key={str}
-            initial={{ y: -10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 10, opacity: 0 }}
-            transition={{ duration: 0.35 }}
-            className="font-serif text-2xl"
-            style={{ color: "#e2c874" }}
-          >
-            {str}
-          </motion.span>
-        </AnimatePresence>
+        <span className="font-serif text-xl">{str}</span>
       </div>
-      <span className="mt-2 text-[9px] uppercase" style={{ color: "#7a5a2c", letterSpacing: "0.3em" }}>
+      <span className="mt-2 text-[9px] uppercase" style={{ letterSpacing: "0.3em", color: "#7a5a2c" }}>
         {label}
       </span>
     </div>
@@ -333,7 +280,7 @@ function CountdownBlock({ value, label }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// Bottom nav — dark parchment with gold
+// Bottom nav
 // ─────────────────────────────────────────────────────────
 function BottomNav({ active, onNavigate }) {
   const items = [
@@ -343,12 +290,12 @@ function BottomNav({ active, onNavigate }) {
     { id: "rsvp", icon: FaEnvelopeOpenText, label: "Raven" },
   ];
   return (
-    <nav
-      className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-full px-2 py-1.5"
+    <div
+      className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-full px-2 py-2"
       style={{
-        background: "linear-gradient(180deg, #1c1a15 0%, #2a2b1e 100%)",
+        background: "linear-gradient(160deg,#1c1a15,#2a2b1e)",
         border: "1px solid #c9a24a",
-        boxShadow: "0 14px 34px -10px rgba(0,0,0,0.7)",
+        boxShadow: "0 15px 30px -10px rgba(0,0,0,0.5)",
       }}
     >
       {items.map((item) => {
@@ -362,24 +309,22 @@ function BottomNav({ active, onNavigate }) {
             style={{ color: isActive ? "#efe3c2" : "#9c7a2e" }}
           >
             {isActive && (
-              <motion.span
-                layoutId="nav-pill"
+              <span
                 className="absolute inset-0 rounded-full"
-                style={{ background: "linear-gradient(135deg, #7a1220 0%, #4a0a12 100%)", border: "1px solid #c9a24a" }}
-                transition={{ type: "spring", stiffness: 300, damping: 26 }}
+                style={{ background: "linear-gradient(135deg,#7a1220,#4a0a12)", zIndex: -1 }}
               />
             )}
-            <Icon className="relative" size={14} />
-            <span className="relative">{item.label}</span>
+            <Icon size={14} />
+            {item.label}
           </button>
         );
       })}
-    </nav>
+    </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────
-// RSVP — "send a raven"
+// RSVP form
 // ─────────────────────────────────────────────────────────
 function WishesForm() {
   const [name, setName] = useState("");
@@ -410,21 +355,17 @@ function WishesForm() {
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.7 }}
-      className="mx-6 rounded-2xl p-6"
-      style={{
-        background: "linear-gradient(160deg, #efe3c2 0%, #d9c493 100%)",
-        border: "1px solid #7a5a2c",
-        boxShadow: "0 20px 40px -25px rgba(30,20,10,0.5)",
-      }}
+      className="mx-6 rounded-3xl p-6"
+      style={{ background: "#f4e6bd", border: "1px solid #7a5a2c" }}
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.3em" }}>
+          <label className="text-[10px] uppercase" style={{ letterSpacing: "0.3em", color: "#7a5a2c" }}>
             Your Name
           </label>
           <input
-            type="text" required value={name} onChange={(e) => setName(e.target.value)}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             className="mt-1 w-full bg-transparent pb-2 text-sm outline-none"
             style={{ borderBottom: "1px solid #7a5a2c", color: "#1c1a15" }}
             placeholder="Enter your name, my lord/lady"
@@ -432,13 +373,15 @@ function WishesForm() {
         </div>
 
         <div>
-          <label className="text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.3em" }}>
+          <label className="text-[10px] uppercase" style={{ letterSpacing: "0.3em", color: "#7a5a2c" }}>
             Will you answer the summons?
           </label>
           <div className="mt-2 flex gap-2">
             {["yes", "maybe", "no"].map((opt) => (
               <button
-                type="button" key={opt} onClick={() => setAttending(opt)}
+                key={opt}
+                type="button"
+                onClick={() => setAttending(opt)}
                 className="flex-1 rounded-full px-3 py-1.5 text-xs capitalize transition"
                 style={
                   attending === opt
@@ -453,11 +396,13 @@ function WishesForm() {
         </div>
 
         <div>
-          <label className="text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.3em" }}>
+          <label className="text-[10px] uppercase" style={{ letterSpacing: "0.3em", color: "#7a5a2c" }}>
             A word for the betrothed *
           </label>
           <textarea
-            required value={message} onChange={(e) => setMessage(e.target.value)} rows={3}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={3}
             className="mt-1 w-full resize-none bg-transparent pb-2 text-sm outline-none"
             style={{ borderBottom: "1px solid #7a5a2c", color: "#1c1a15" }}
             placeholder="Write your blessing..."
@@ -465,7 +410,9 @@ function WishesForm() {
         </div>
 
         <motion.button
-          type="submit" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+          type="submit"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
           disabled={status === "sending"}
           className="w-full rounded-full py-3 text-xs uppercase shadow-md"
           style={{
@@ -495,7 +442,7 @@ function WishesForm() {
 }
 
 // ─────────────────────────────────────────────────────────
-// NEW SECTION — Guest photo upload ("Scribe Your Chronicle")
+// Guest photo upload
 // ─────────────────────────────────────────────────────────
 function GuestUploadSection() {
   return (
@@ -513,7 +460,6 @@ function GuestUploadSection() {
         feast — that our saga may be told in full.
       </p>
 
-      {/* Screenshot preview of the upload page */}
       <div
         className="mx-auto mt-8 overflow-hidden"
         style={{
@@ -528,9 +474,7 @@ function GuestUploadSection() {
           src={guestUploadPreview}
           alt="Preview of the guest photo upload page"
           className="block w-full"
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-          }}
+          onError={(e) => { e.currentTarget.style.display = "none"; }}
         />
       </div>
 
@@ -561,7 +505,7 @@ function GuestUploadSection() {
 }
 
 // ─────────────────────────────────────────────────────────
-// Tap hint — used on the ancient scroll cover screen
+// Tap hint
 // ─────────────────────────────────────────────────────────
 function TapHint({ label = "Break the Seal" }) {
   return (
@@ -582,9 +526,34 @@ function TapHint({ label = "Break the Seal" }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// Cover — ancient scroll, wax seal that cracks and peels back,
-// drifting embers + candlelight vignette in the background.
-// Uses full viewport height (100dvh) so no gap beneath.
+// Wax medallion
+// ─────────────────────────────────────────────────────────
+function WaxDisc() {
+  return (
+    <div
+      style={{
+        width: "100%", height: "100%",
+        borderRadius: "50%",
+        background:
+          "radial-gradient(circle at 35% 30%, #b8202a 0%, #7a1220 45%, #3a0810 100%)",
+        boxShadow:
+          "0 6px 14px rgba(0,0,0,0.55), inset 0 2px 6px rgba(255,180,150,0.4), inset 0 -6px 12px rgba(0,0,0,0.55)",
+        border: "1px solid #2a0508",
+        overflow: "hidden",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+    >
+      <img
+        src={SEAL_URL}
+        alt="House seal"
+        style={{ width: "70%", height: "70%", objectFit: "contain", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.6))" }}
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Cover screen
 // ─────────────────────────────────────────────────────────
 function CoverScreen({ onOpen, guestName }) {
   const [phase, setPhase] = useState("idle");
@@ -599,6 +568,12 @@ function CoverScreen({ onOpen, guestName }) {
     setTimeout(() => setPhase("revealed"), 1500);
   };
 
+  // Jagged crack path so seal halves look torn, not sliced
+  const LEFT_HALF_CLIP =
+    "polygon(0 0, 50% 0, 46% 8%, 54% 18%, 44% 30%, 52% 42%, 43% 55%, 51% 68%, 44% 82%, 50% 100%, 0 100%)";
+  const RIGHT_HALF_CLIP =
+    "polygon(50% 0, 100% 0, 100% 100%, 50% 100%, 44% 82%, 51% 68%, 43% 55%, 52% 42%, 44% 30%, 54% 18%, 46% 8%)";
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -611,7 +586,6 @@ function CoverScreen({ onOpen, guestName }) {
           "radial-gradient(ellipse at 50% 40%, #2a1a0a 0%, #120a04 60%, #05030a 100%)",
       }}
     >
-      {/* candlelight vignette */}
       <div
         className="wi-candle pointer-events-none absolute inset-0"
         style={{
@@ -619,7 +593,6 @@ function CoverScreen({ onOpen, guestName }) {
             "radial-gradient(ellipse at 50% 45%, rgba(220,150,60,0.20), transparent 55%)",
         }}
       />
-      {/* drifting embers */}
       {[...Array(14)].map((_, i) => (
         <motion.span
           key={i}
@@ -651,27 +624,29 @@ function CoverScreen({ onOpen, guestName }) {
           perspective: 1400,
         }}
       >
-        {/* Ancient scroll / envelope body */}
         <div
-          className="wi-ancient wi-ancient-stains wi-ancient-fiber wi-scorched wi-burnt-edge absolute inset-0 overflow-hidden"
+          className={`wi-ancient wi-ancient-stains wi-ancient-fiber ${revealed ? "" : "wi-scorched wi-burnt-edge"} absolute inset-0 overflow-hidden`}
           style={{
             borderRadius: 6,
-            border: "1px solid #3a2410",
-            boxShadow:
-              "0 40px 60px -20px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(80,50,20,0.4)",
+            border: revealed ? "1px solid #7a5a2c" : "1px solid #3a2410",
+            boxShadow: revealed
+              ? "0 20px 40px -20px rgba(90,60,20,0.35)"
+              : "0 40px 60px -20px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(80,50,20,0.4)",
+            transition: "box-shadow 0.6s ease, border-color 0.6s ease",
           }}
         >
-          {/* inner gold hairline frame */}
           <div
             className="absolute pointer-events-none"
             style={{
               inset: 18,
               border: "1px solid rgba(120,85,30,0.55)",
-              boxShadow: "inset 0 0 0 3px rgba(60,35,10,0.35)",
+              boxShadow: revealed
+                ? "inset 0 0 0 3px rgba(120,85,30,0.2)"
+                : "inset 0 0 0 3px rgba(60,35,10,0.35)",
+              transition: "box-shadow 0.6s ease",
             }}
           />
 
-          {/* Invitation content — revealed as flap peels */}
           <motion.div
             initial={false}
             animate={revealed ? { y: 0, opacity: 1 } : { y: 40, opacity: 0 }}
@@ -683,9 +658,9 @@ function CoverScreen({ onOpen, guestName }) {
             <p className="font-serif mt-4 text-[10px]" style={{ letterSpacing: "0.4em", color: "#5a3a1a" }}>
               TWO GREAT HOUSES UNITE
             </p>
-            <p className="font-black-letter mt-6 text-5xl" style={{ color: "#3a1a08" }}>&amp;</p>
+            <p className="font-black-letter mt-6 text-5xl" style={{ color: "#3a1a08" }}>&</p>
             <h1 className="font-serif mt-3 text-2xl" style={{ letterSpacing: "0.12em", color: "#2a1408" }}>
-              {COUPLE.groom.nickname} &amp; {COUPLE.bride.nickname}
+              {COUPLE.groom.nickname} & {COUPLE.bride.nickname}
             </h1>
             <div className="wi-inkline mt-5 h-px w-24 opacity-70" />
             {guestName && (
@@ -697,30 +672,53 @@ function CoverScreen({ onOpen, guestName }) {
               {EVENT.date.toUpperCase()}
             </p>
 
-            <button
-              onClick={(e) => { e.stopPropagation(); onOpen(); }}
-              className="mt-8"
-              style={{
-                borderRadius: 2,
-                padding: "10px 22px",
-                fontFamily: "'Cinzel', serif",
-                fontSize: 10,
-                letterSpacing: "0.35em",
-                textTransform: "uppercase",
-                color: "#f2dfae",
-                background: "linear-gradient(135deg,#5a0a10 0%, #2a0508 100%)",
-                border: "1px solid #8a6a28",
-                boxShadow: "0 10px 22px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,200,140,0.15)",
-              }}
-            >
-              Enter the Great Hall
-            </button>
+            {/* Enter button with pulsing ring + tap-hand icon + hint */}
+            <div className="relative mt-8">
+              <motion.span
+                className="pointer-events-none absolute inset-0 rounded-sm"
+                style={{ border: "1px solid #c9a24a" }}
+                animate={{ scale: [1, 1.18, 1], opacity: [0.9, 0, 0.9] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+              />
+              <motion.button
+                onClick={(e) => { e.stopPropagation(); onOpen(); }}
+                animate={{ y: [0, -3, 0] }}
+                transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+                className="relative inline-flex items-center gap-2"
+                style={{
+                  borderRadius: 2,
+                  padding: "10px 22px",
+                  fontFamily: "'Cinzel', serif",
+                  fontSize: 10,
+                  letterSpacing: "0.35em",
+                  textTransform: "uppercase",
+                  color: "#f2dfae",
+                  background: "linear-gradient(135deg,#5a0a10 0%, #2a0508 100%)",
+                  border: "1px solid #8a6a28",
+                  boxShadow: "0 10px 22px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,200,140,0.15)",
+                }}
+              >
+                <FaHandPointer size={11} />
+                Enter the Great Hall
+              </motion.button>
+              <p
+                className="mt-2 text-center"
+                style={{
+                  fontFamily: "'Cinzel', serif",
+                  fontSize: 9,
+                  letterSpacing: "0.35em",
+                  color: "#7a1220",
+                }}
+              >
+                ↑ TAP TO ENTER
+              </p>
+            </div>
           </motion.div>
 
-          {/* Triangular flap that peels back */}
+          {/* Peeling flap */}
           <motion.div
             initial={false}
-            animate={opening ? { rotateX: -178 } : { rotateX: 0 }}
+            animate={opening ? { rotateX: -178, opacity: revealed ? 0 : 1 } : { rotateX: 0, opacity: 1 }}
             transition={{ duration: 0.9, ease: [0.7, 0, 0.3, 1] }}
             className="wi-ancient wi-ancient-stains wi-ancient-fiber absolute left-0 right-0 top-0 flex items-start justify-center"
             style={{
@@ -730,6 +728,7 @@ function CoverScreen({ onOpen, guestName }) {
               borderBottom: "1px solid rgba(60,30,10,0.6)",
               boxShadow: "inset 0 0 30px rgba(30,15,0,0.55)",
               backfaceVisibility: "hidden",
+              pointerEvents: revealed ? "none" : "auto",
             }}
           >
             <p
@@ -739,7 +738,6 @@ function CoverScreen({ onOpen, guestName }) {
               Wedding is Coming
             </p>
 
-            {/* Wax seal */}
             <div
               className="wi-seal absolute"
               style={{
@@ -752,22 +750,24 @@ function CoverScreen({ onOpen, guestName }) {
             >
               <motion.div
                 initial={false}
-                animate={cracked ? { x: -34, y: 8, rotate: -22, opacity: 0.95 } : { x: 0, y: 0, rotate: 0 }}
+                animate={cracked ? { x: -38, y: 10, rotate: -28, opacity: 0.95 } : { x: 0, y: 0, rotate: 0 }}
                 transition={{ duration: 0.55, ease: [0.7, 0, 0.3, 1] }}
                 style={{
                   position: "absolute", inset: 0,
-                  clipPath: "polygon(0 0, 52% 0, 46% 100%, 0 100%)",
+                  clipPath: LEFT_HALF_CLIP,
+                  filter: cracked ? "drop-shadow(2px 2px 3px rgba(0,0,0,0.5))" : "none",
                 }}
               >
                 <WaxDisc />
               </motion.div>
               <motion.div
                 initial={false}
-                animate={cracked ? { x: 34, y: 8, rotate: 22, opacity: 0.95 } : { x: 0, y: 0, rotate: 0 }}
+                animate={cracked ? { x: 38, y: 10, rotate: 28, opacity: 0.95 } : { x: 0, y: 0, rotate: 0 }}
                 transition={{ duration: 0.55, ease: [0.7, 0, 0.3, 1] }}
                 style={{
                   position: "absolute", inset: 0,
-                  clipPath: "polygon(52% 0, 100% 0, 100% 100%, 46% 100%)",
+                  clipPath: RIGHT_HALF_CLIP,
+                  filter: cracked ? "drop-shadow(-2px 2px 3px rgba(0,0,0,0.5))" : "none",
                 }}
               >
                 <WaxDisc />
@@ -783,31 +783,6 @@ function CoverScreen({ onOpen, guestName }) {
         )}
       </div>
     </motion.div>
-  );
-}
-
-// Wax medallion — uses your seal image from assets, clipped into two halves above.
-function WaxDisc() {
-  return (
-    <div
-      style={{
-        width: "100%", height: "100%",
-        borderRadius: "50%",
-        background:
-          "radial-gradient(circle at 35% 30%, #b8202a 0%, #7a1220 45%, #3a0810 100%)",
-        boxShadow:
-          "0 6px 14px rgba(0,0,0,0.55), inset 0 2px 6px rgba(255,180,150,0.4), inset 0 -6px 12px rgba(0,0,0,0.55)",
-        border: "1px solid #2a0508",
-        overflow: "hidden",
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}
-    >
-      <img
-        src={SEAL_URL}
-        alt="House seal"
-        style={{ width: "70%", height: "70%", objectFit: "contain", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.6))" }}
-      />
-    </div>
   );
 }
 
@@ -914,7 +889,7 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
 
         <SectionDivider />
 
-        {/* VERSE / house words */}
+        {/* VERSE */}
         <motion.section
           initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.3 }} transition={{ duration: 0.9 }}
@@ -937,7 +912,7 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
 
         <SectionDivider symbol="✦" />
 
-        {/* COUPLE / HOUSES */}
+        {/* HOUSES */}
         <section ref={sectionRefs.couple} className="px-6">
           <h3 className="text-center font-serif text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.35em" }}>
             The Two Houses
@@ -1067,7 +1042,7 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
           <ArchFrame src={GALLERY[0]} alt="" className="mx-auto mt-8 h-64 w-64" />
 
           <p className="mt-6 font-serif text-lg italic" style={{ color: "#7a1220" }}>
-            May the old gods and the new bless our union.
+            May the Lord bless and keep our union.
           </p>
         </section>
 
