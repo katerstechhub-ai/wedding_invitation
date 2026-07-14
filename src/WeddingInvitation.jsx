@@ -514,7 +514,9 @@ function TapHint({ label = "Break the Seal" }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// Wax medallion (no shadows)
+// Wax medallion — flat, no radial/spherical shadow.
+// Matches the flat linear-gradient + border style used on
+// the "Enter the Great Hall" button.
 // ─────────────────────────────────────────────────────────
 function WaxDisc() {
   return (
@@ -522,9 +524,8 @@ function WaxDisc() {
       style={{
         width: "100%", height: "100%",
         borderRadius: "50%",
-        background:
-          "radial-gradient(circle at 35% 30%, #b8202a 0%, #7a1220 45%, #3a0810 100%)",
-        border: "1px solid #2a0508",
+        background: "linear-gradient(135deg, #7a1220 0%, #4a0a12 100%)",
+        border: "1px solid #c9a24a",
         overflow: "hidden",
         display: "flex", alignItems: "center", justifyContent: "center",
       }}
@@ -609,11 +610,11 @@ function CoverScreen({ onOpen, guestName }) {
           perspective: 1400,
         }}
       >
-        <div
-          className={`wi-ancient wi-ancient-stains wi-ancient-fiber ${revealed ? "" : "wi-scorched wi-burnt-edge"} absolute inset-0 overflow-hidden`}
+      <div
+          className="wi-ancient wi-ancient-stains wi-ancient-fiber absolute inset-0 overflow-hidden"
           style={{
             borderRadius: 6,
-            border: revealed ? "1px solid #7a5a2c" : "1px solid #3a2410",
+            border: "1px solid #7a5a2c",
           }}
         >
           <div
