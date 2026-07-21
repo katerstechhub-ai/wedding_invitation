@@ -58,8 +58,12 @@ const HERO_VIDEO_POSTER =
   "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?q=80&w=1400&auto=format&fit=crop";
 
 const BG_AMBIENT_MUSIC_URL = "";
-const RSVP_EMAIL_ENDPOINT = "https://formspree.io/f/REPLACE_WITH_YOUR_FORM_ID";
 const GUEST_UPLOAD_URL = "https://mediahub-frontend-4tdp.vercel.app";
+
+// Same backend used by the admin QR page. Set VITE_GUEST_API_URL in a
+// local .env to point at http://localhost:5050/api when developing.
+const API_BASE =
+  import.meta.env.VITE_GUEST_API_URL || "https://wedding-guest-backend-b9g8.onrender.com/api";
 
 // ─────────────────────────────────────────────────────────
 // Global styles
@@ -309,29 +313,52 @@ function BottomNav({ active, onNavigate }) {
 
 // ─────────────────────────────────────────────────────────
 // RSVP form
+// token: guest's token if they arrived via a QR/personal link (locks +
+//        pre-fills the name field, and updates that guest's record).
+// prefillName: name to show/lock when a token is present.
 // ─────────────────────────────────────────────────────────
-function WishesForm() {
-  const [name, setName] = useState("");
+function WishesForm({ token, prefillName }) {
+  const [name, setName] = useState(prefillName || "");
+  const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [attending, setAttending] = useState("yes");
   const [status, setStatus] = useState("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  useEffect(() => {
+    if (prefillName) setName(prefillName);
+  }, [prefillName]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim() || !message.trim()) return;
-    if (RSVP_EMAIL_ENDPOINT.includes("REPLACE_WITH_YOUR_FORM_ID")) {
-      setStatus("error"); return;
-    }
+    if (!name.trim() || !email.trim() || !message.trim()) return;
+
     setStatus("sending");
+    setErrorMsg("");
     try {
-      const res = await fetch(RSVP_EMAIL_ENDPOINT, {
+      const res = await fetch(`${API_BASE}/guests/rsvp`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ name, attending, message }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: token || undefined,
+          name,
+          email,
+          attending,
+          message,
+        }),
       });
-      if (res.ok) { setStatus("sent"); setName(""); setMessage(""); }
-      else setStatus("error");
-    } catch { setStatus("error"); }
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setErrorMsg(body.message || "Something went wrong.");
+        setStatus("error");
+        return;
+      }
+      setStatus("sent");
+      setMessage("");
+    } catch {
+      setErrorMsg("Could not reach the server — try again shortly.");
+      setStatus("error");
+    }
   };
 
   return (
@@ -355,9 +382,28 @@ function WishesForm() {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            readOnly={!!token}
+            className="mt-1 w-full bg-transparent pb-2 text-sm outline-none"
+            style={{
+              borderBottom: "1px solid #7a5a2c",
+              color: "#1c1a15",
+              opacity: token ? 0.75 : 1,
+            }}
+            placeholder="Enter your name, my lord/lady"
+          />
+        </div>
+
+        <div>
+          <label className="text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.3em" }}>
+            Your Email
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="mt-1 w-full bg-transparent pb-2 text-sm outline-none"
             style={{ borderBottom: "1px solid #7a5a2c", color: "#1c1a15" }}
-            placeholder="Enter your name, my lord/lady"
+            placeholder="So we can send your confirmation"
           />
         </div>
 
@@ -417,12 +463,12 @@ function WishesForm() {
 
         {status === "sent" && (
           <p className="text-center text-xs" style={{ color: "#4a0a12" }}>
-            The raven has flown — your words shall reach us 🕊
+            The raven has flown — check your email for confirmation 🕊
           </p>
         )}
         {status === "error" && (
           <p className="text-center text-xs" style={{ color: "#7a1220" }}>
-            The raven could not fly — try again shortly.
+            {errorMsg || "The raven could not fly — try again shortly."}
           </p>
         )}
       </form>
@@ -767,6 +813,7 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
   const [muted, setMuted] = useState(true);
   const [activeNav, setActiveNav] = useState("home");
   const [guestName, setGuestName] = useState(guestNameProp);
+  const [guestToken, setGuestToken] = useState("");
   const audioRef = useRef(null);
   const countdown = useCountdown(EVENT.weddingDateTimeISO);
 
@@ -782,8 +829,21 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
     const g = params.get("guest");
-    if (g) setGuestName(decodeURIComponent(g));
+
+    if (token) {
+      setGuestToken(token);
+      // Look up the guest's name from the backend so the invite and the
+      // RSVP form both show/lock the right name, even if the link is
+      // shared without the ?guest= param.
+      fetch(`${API_BASE}/guests/by-token/${token}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((guest) => { if (guest?.name) setGuestName(guest.name); })
+        .catch(() => {});
+    } else if (g) {
+      setGuestName(decodeURIComponent(g));
+    }
   }, []);
 
   useEffect(() => {
@@ -1056,7 +1116,7 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
             Answer the Summons
           </p>
           <div className="mt-6">
-            <WishesForm />
+            <WishesForm token={guestToken} prefillName={guestName} />
           </div>
         </section>
 
