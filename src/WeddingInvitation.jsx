@@ -10,6 +10,7 @@ import pamsPhoto from "./assets/pams.jpeg";
 import bizzerPhoto from "./assets/Bizzer.jpeg";
 import SEAL_URL from "./assets/stark-seal.png";
 import guestUploadPreview from "./assets/guest-upload-preview.jpeg";
+import dresscodeImage from "./assets/dresscode.jpeg";
 
 // ─────────────────────────────────────────────────────────
 // DATA
@@ -312,10 +313,57 @@ function BottomNav({ active, onNavigate }) {
 }
 
 // ─────────────────────────────────────────────────────────
+// Dress Code section
+// ─────────────────────────────────────────────────────────
+function DressCodeSection() {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: 0.9 }}
+      className="px-6"
+    >
+      <h3
+        className="text-center font-serif text-[10px] uppercase"
+        style={{ color: "#7a1220", letterSpacing: "0.35em" }}
+      >
+        Attire of the Realm
+      </h3>
+      <p
+        className="mt-2 text-center font-black-letter text-3xl"
+        style={{ color: "#7a1220" }}
+      >
+        Black Tie
+      </p>
+      <p
+        className="mx-auto mt-3 max-w-sm text-center text-sm italic"
+        style={{ color: "#4a3820" }}
+      >
+        We ask our guests to dress in the spirit of the evening — gentlemen
+        in black or white, ladies in rich, natural tones.
+      </p>
+
+      <div
+        className="relative mx-auto mt-6 max-w-md overflow-hidden"
+        style={{
+          borderRadius: 14,
+          border: "1px solid #7a5a2c",
+          boxShadow: "0 12px 30px rgba(30,15,5,0.25)",
+        }}
+      >
+        <img
+          src={dresscodeImage}
+          alt="Black tie wedding dress code reference — men in black and white, women in espresso, burgundy, ruby, olive, or sage"
+          className="block w-full"
+        />
+      </div>
+    </motion.section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
 // RSVP form
-// token: guest's token if they arrived via a QR/personal link (locks +
-//        pre-fills the name field, and updates that guest's record).
-// prefillName: name to show/lock when a token is present.
 // ─────────────────────────────────────────────────────────
 function WishesForm({ token, prefillName }) {
   const [name, setName] = useState(prefillName || "");
@@ -403,7 +451,7 @@ function WishesForm({ token, prefillName }) {
             onChange={(e) => setEmail(e.target.value)}
             className="mt-1 w-full bg-transparent pb-2 text-sm outline-none"
             style={{ borderBottom: "1px solid #7a5a2c", color: "#1c1a15" }}
-            placeholder="So we can send your confirmation"
+            placeholder="In case we need to reach you"
           />
         </div>
 
@@ -463,7 +511,7 @@ function WishesForm({ token, prefillName }) {
 
         {status === "sent" && (
           <p className="text-center text-xs" style={{ color: "#4a0a12" }}>
-            The raven has flown — check your email for confirmation 🕊
+            The raven has flown — your response has been received 🕊
           </p>
         )}
         {status === "error" && (
@@ -478,7 +526,6 @@ function WishesForm({ token, prefillName }) {
 
 // ─────────────────────────────────────────────────────────
 // Guest photo upload
-// ─────────────────────────────────────────────────────────
 function GuestUploadSection() {
   return (
     <section className="px-6 py-16" style={{ background: "#efe3c2" }}>
@@ -560,9 +607,7 @@ function TapHint({ label = "Break the Seal" }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// Wax medallion — flat, no radial/spherical shadow.
-// Matches the flat linear-gradient + border style used on
-// the "Enter the Great Hall" button.
+// Wax medallion
 // ─────────────────────────────────────────────────────────
 function WaxDisc() {
   return (
@@ -586,7 +631,7 @@ function WaxDisc() {
 }
 
 // ─────────────────────────────────────────────────────────
-// Cover screen (shadows removed)
+// Cover screen
 // ─────────────────────────────────────────────────────────
 function CoverScreen({ onOpen, guestName }) {
   const [phase, setPhase] = useState("idle");
@@ -834,9 +879,6 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
 
     if (token) {
       setGuestToken(token);
-      // Look up the guest's name from the backend so the invite and the
-      // RSVP form both show/lock the right name, even if the link is
-      // shared without the ?guest= param.
       fetch(`${API_BASE}/guests/by-token/${token}`)
         .then((res) => (res.ok ? res.json() : null))
         .then((guest) => { if (guest?.name) setGuestName(guest.name); })
@@ -1048,6 +1090,11 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
             <FaMapMarkerAlt size={12} /> Find the Castle
           </motion.a>
         </motion.section>
+
+        <SectionDivider symbol="✦" />
+
+        {/* DRESS CODE */}
+        <DressCodeSection />
 
         {/* COUNTDOWN */}
         <section className="relative mt-14 px-6 text-center">
