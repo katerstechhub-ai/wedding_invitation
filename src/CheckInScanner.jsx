@@ -87,21 +87,28 @@ export default function CheckInScanner() {
     [busy, adminKey, stopScanner]
   );
 
+  // ─── FIX: startScanner with a small delay ───
   const startScanner = async () => {
     setResult(null);
     setScanning(true);
+
+    // Wait a tick so the DOM renders the container
+    await new Promise(r => setTimeout(r, 100));
+
     const qr = new Html5Qrcode(containerId);
     scannerRef.current = qr;
+
     try {
       await qr.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: 240 },
         handleDecoded,
-        () => {}
+        () => {} // ignore scan errors
       );
     } catch (err) {
-      setResult({ error: "Camera access failed: " + err.message });
+      setResult({ error: `Camera error: ${err.message}` });
       setScanning(false);
+      scannerRef.current = null;
     }
   };
 
@@ -203,6 +210,7 @@ export default function CheckInScanner() {
           </div>
         )}
 
+        {/* ─── Scanner container with minHeight ─── */}
         <div
           id={containerId}
           style={{
@@ -210,6 +218,7 @@ export default function CheckInScanner() {
             borderRadius: 16,
             overflow: "hidden",
             background: T.soft,
+            minHeight: 240, // 👈 ensures the scanner has space
           }}
         />
 
