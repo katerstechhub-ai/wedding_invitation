@@ -30,6 +30,96 @@ function EyeIcon({ off }) {
   );
 }
 
+// ── Message Modal ─────────────────────────────────────────
+// Shows a guest's full RSVP: attending status, their message, and email.
+// This is the actual "inbox" now — email delivery isn't reliable on
+// Render's free tier, so this is where RSVPs get read.
+function MessageModal({ guest, onClose }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(20,20,10,0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+        padding: 16,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#fbf8f0",
+          borderRadius: 20,
+          padding: 28,
+          maxWidth: 380,
+          width: "100%",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.35)",
+          position: "relative",
+        }}
+      >
+        <button
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: 10,
+            right: 14,
+            background: "none",
+            border: "none",
+            fontSize: 20,
+            color: "#7c8a5e",
+            cursor: "pointer",
+          }}
+          aria-label="Close"
+        >
+          ×
+        </button>
+
+        <p style={{ fontWeight: 600, fontSize: 18, color: "#3f4632", margin: 0 }}>{guest.name}</p>
+        {guest.email && (
+          <p style={{ fontSize: 12, color: "#7c8a5e", marginTop: 2 }}>{guest.email}</p>
+        )}
+
+        <p
+          style={{
+            marginTop: 14,
+            display: "inline-block",
+            fontSize: 12,
+            fontWeight: 600,
+            textTransform: "capitalize",
+            padding: "3px 10px",
+            borderRadius: 999,
+            background:
+              guest.attending === "yes" ? "#e3f0d5" : guest.attending === "no" ? "#f5dede" : "#f0ead0",
+            color:
+              guest.attending === "yes" ? "#4a7c3f" : guest.attending === "no" ? "#b23b3b" : "#8a6a1f",
+          }}
+        >
+          {guest.attending || "No RSVP yet"}
+        </p>
+
+        <div
+          style={{
+            marginTop: 16,
+            padding: 14,
+            borderRadius: 10,
+            background: "#efe9d6",
+            fontSize: 14,
+            color: "#3f4632",
+            lineHeight: 1.5,
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {guest.rsvpMessage || "No message left."}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── QR Modal ─────────────────────────────────────────────
 // Takes the whole guest record now (not just a name) — the QR needs the
 // guest's token so a scan ties back to their exact record on RSVP.
@@ -119,7 +209,7 @@ function QrModal({ guest, onClose }) {
 }
 
 // ── Guest tracking table ─────────────────────────────────
-function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, busyId }) {
+function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage, busyId }) {
   if (guests.length === 0) return null;
 
   const arrivedCount = guests.filter((g) => g.arrived).length;
@@ -165,8 +255,23 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, busyId }) {
               >
                 <td style={{ padding: "8px 12px", color: "#7c8a5e" }}>{i + 1}</td>
                 <td style={{ padding: "8px 12px", color: "#3f4632" }}>{g.name}</td>
-                <td style={{ padding: "8px 12px", color: "#7c8a5e", fontSize: 12, textTransform: "capitalize" }}>
-                  {g.attending || "—"}
+                <td style={{ padding: "8px 12px" }}>
+                  <button
+                    onClick={() => onOpenMessage(g)}
+                    style={{
+                      border: "none",
+                      background: "none",
+                      padding: 0,
+                      cursor: "pointer",
+                      fontSize: 12,
+                      textTransform: "capitalize",
+                      color: g.attending ? "#3f4632" : "#a8a08a",
+                      textDecoration: "underline",
+                      textDecorationColor: "#cabf9e",
+                    }}
+                  >
+                    {g.attending || "no RSVP"}
+                  </button>
                 </td>
                 <td style={{ padding: "8px 12px", textAlign: "center" }}>
                   <button
@@ -232,6 +337,7 @@ export default function GuestQrCodes() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [guests, setGuests] = useState([]);
   const [modalGuest, setModalGuest] = useState(null);
+  const [modalMessage, setModalMessage] = useState(null);
 
   const [adminKey, setAdminKey] = useState(
     () => localStorage.getItem(ADMIN_KEY_STORAGE) || ""
@@ -583,11 +689,13 @@ export default function GuestQrCodes() {
           onToggleArrived={handleToggleArrived}
           onDelete={handleDelete}
           onOpenQr={setModalGuest}
+          onOpenMessage={setModalMessage}
           busyId={busyId}
         />
       )}
 
       {modalGuest && <QrModal guest={modalGuest} onClose={() => setModalGuest(null)} />}
+      {modalMessage && <MessageModal guest={modalMessage} onClose={() => setModalMessage(null)} />}
     </div>
   );
 }
