@@ -31,15 +31,17 @@ function EyeIcon({ off }) {
 }
 
 // ── QR Modal ─────────────────────────────────────────────
-function QrModal({ name, onClose }) {
+// Takes the whole guest record now (not just a name) — the QR needs the
+// guest's token so a scan ties back to their exact record on RSVP.
+function QrModal({ guest, onClose }) {
   const canvasWrapperRef = useRef(null);
-  const guestUrl = `${SITE_URL}/?guest=${encodeURIComponent(name)}`;
+  const guestUrl = `${SITE_URL}/?token=${encodeURIComponent(guest.token)}`;
 
   const handleDownload = () => {
     const canvas = canvasWrapperRef.current.querySelector("canvas");
     if (!canvas) return;
     const link = document.createElement("a");
-    link.download = `qr-${name.replace(/\s+/g, "_")}.png`;
+    link.download = `qr-${guest.name.replace(/\s+/g, "_")}.png`;
     link.href = canvas.toDataURL("image/png");
     link.click();
   };
@@ -91,7 +93,7 @@ function QrModal({ name, onClose }) {
         <div ref={canvasWrapperRef} style={{ display: "flex", justifyContent: "center" }}>
           <QRCodeCanvas value={guestUrl} size={220} bgColor="#fbf8f0" fgColor="#3f4632" />
         </div>
-        <p style={{ marginTop: 14, fontWeight: 600, fontSize: 16, color: "#3f4632" }}>{name}</p>
+        <p style={{ marginTop: 14, fontWeight: 600, fontSize: 16, color: "#3f4632" }}>{guest.name}</p>
         <p style={{ fontSize: 11, color: "#7c8a5e", wordBreak: "break-all", marginTop: 4 }}>
           {guestUrl}
         </p>
@@ -144,6 +146,7 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, busyId }) {
             <tr style={{ background: "#efe9d6", color: "#3f4632", textAlign: "left" }}>
               <th style={{ padding: "10px 12px", width: 40 }}>#</th>
               <th style={{ padding: "10px 12px" }}>Guest Name</th>
+              <th style={{ padding: "10px 12px" }}>RSVP</th>
               <th style={{ padding: "10px 12px", width: 90, textAlign: "center" }}>QR</th>
               <th style={{ padding: "10px 12px", width: 100, textAlign: "center" }}>Arrived</th>
               <th style={{ padding: "10px 12px", width: 150 }}>Arrival Time</th>
@@ -162,9 +165,12 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, busyId }) {
               >
                 <td style={{ padding: "8px 12px", color: "#7c8a5e" }}>{i + 1}</td>
                 <td style={{ padding: "8px 12px", color: "#3f4632" }}>{g.name}</td>
+                <td style={{ padding: "8px 12px", color: "#7c8a5e", fontSize: 12, textTransform: "capitalize" }}>
+                  {g.attending || "—"}
+                </td>
                 <td style={{ padding: "8px 12px", textAlign: "center" }}>
                   <button
-                    onClick={() => onOpenQr(g.name)}
+                    onClick={() => onOpenQr(g)}
                     style={{
                       border: "1px solid #5c6b45",
                       color: "#5c6b45",
@@ -403,8 +409,8 @@ export default function GuestQrCodes() {
     <div style={{ maxWidth: 700, margin: "0 auto", padding: 24, fontFamily: "sans-serif" }}>
       <h1 style={{ color: "#3f4632", marginBottom: 4 }}>Guest QR Codes</h1>
       <p style={{ color: "#5c5848", fontSize: 14, marginTop: 0 }}>
-        Each QR opens your invite with that guest's name pre-filled. Data is
-        stored on the server, so it stays the same across devices and refreshes.
+        Each QR opens your invite tied to that guest's own record, so their
+        RSVP and check-in stay linked — no matter how many times they scan it.
       </p>
 
       {/* ── Admin key ───────────────────────────────── */}
@@ -581,7 +587,7 @@ export default function GuestQrCodes() {
         />
       )}
 
-      {modalGuest && <QrModal name={modalGuest} onClose={() => setModalGuest(null)} />}
+      {modalGuest && <QrModal guest={modalGuest} onClose={() => setModalGuest(null)} />}
     </div>
   );
 }
