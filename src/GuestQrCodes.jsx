@@ -262,7 +262,10 @@ function QrModal({ guest, onClose }) {
     const canvas = canvasWrapperRef.current.querySelector("canvas");
     setShareState("sharing");
 
-    const shareText = `Here's ${guest.name}'s check-in QR code for the wedding.`;
+    // Some apps (esp. when sharing an image file) drop the separate `url`
+    // field, so the link is folded into the text itself to make sure it
+    // always goes along with the QR code.
+    const shareText = `You're invited! 🎉 Here's your QR code for check-in at the wedding — just show this at the entrance.\n\nWedding invitation link: ${guestUrl}`;
 
     try {
       // Prefer sharing the actual QR image (WhatsApp, etc. show it as a photo)
@@ -275,7 +278,7 @@ function QrModal({ guest, onClose }) {
           if (navigator.canShare({ files: [file] })) {
             await navigator.share({
               files: [file],
-              title: `${guest.name}'s QR code`,
+              title: `${guest.name}'s wedding invitation & check-in QR code`,
               text: shareText,
             });
             setShareState("idle");
@@ -286,7 +289,11 @@ function QrModal({ guest, onClose }) {
 
       // Fall back to sharing just the link
       if (navigator.share) {
-        await navigator.share({ title: `${guest.name}'s QR code`, text: shareText, url: guestUrl });
+        await navigator.share({
+          title: `${guest.name}'s wedding invitation & check-in QR code`,
+          text: shareText,
+          url: guestUrl,
+        });
         setShareState("idle");
         return;
       }
