@@ -1306,11 +1306,6 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
 
         <SectionDivider />
 
-        {/* GUEST PHOTO UPLOAD */}
-        <GuestUploadSection />
-
-        <SectionDivider symbol="✦" />
-
         {/* RSVP */}
         <section ref={sectionRefs.rsvp}>
           <h3 className="text-center font-serif text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.35em" }}>
@@ -1323,6 +1318,11 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
             <WishesForm token={guestToken} prefillName={guestName} onSubmitted={handleRsvpSubmitted} />
           </div>
         </section>
+
+        <SectionDivider symbol="✦" />
+
+        {/* GUEST PHOTO UPLOAD */}
+        <GuestUploadSection />
 
         {/* FOOTER */}
         <motion.footer
