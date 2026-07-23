@@ -189,6 +189,170 @@ function ArrivalsTable({ guests, onMarkArrived, busyId }) {
   );
 }
 
+// Fallback for guests without a QR code on hand. Deliberately requires
+// picking the exact guest and confirming, rather than a single tap, so it
+// isn't a low-friction way to wave people in.
+function ManualCheckIn({ guests, onMarkArrived, busyId }) {
+  const [query, setQuery] = useState("");
+  const [confirming, setConfirming] = useState(null); // guest object pending confirmation
+
+  const matches =
+    query.trim().length < 2
+      ? []
+      : guests
+          .filter((g) => g.name.toLowerCase().includes(query.trim().toLowerCase()))
+          .slice(0, 8);
+
+  const confirm = async () => {
+    if (!confirming) return;
+    await onMarkArrived(confirming._id);
+    setConfirming(null);
+    setQuery("");
+  };
+
+  return (
+    <div
+      style={{
+        background: T.card,
+        borderRadius: T.radius,
+        padding: 22,
+        marginTop: 16,
+        boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+      }}
+    >
+      <h2 style={{ color: T.ink, fontSize: 16, margin: "0 0 6px", fontWeight: 700 }}>
+        No QR code?
+      </h2>
+      <p style={{ color: T.sub, fontSize: 13, margin: "0 0 12px" }}>
+        Search their name and confirm — only use this when a guest genuinely can't present their code.
+      </p>
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setConfirming(null); }}
+        placeholder="Type guest name…"
+        style={{
+          width: "100%",
+          padding: "12px 16px",
+          borderRadius: 999,
+          border: "none",
+          background: T.soft,
+          fontSize: 14,
+          outline: "none",
+          boxSizing: "border-box",
+        }}
+      />
+
+      {matches.length > 0 && (
+        <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+          {matches.map((g) => (
+            <div
+              key={g._id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 14px",
+                borderRadius: 12,
+                background: T.soft,
+              }}
+            >
+              <span style={{ fontSize: 14, color: T.ink, fontWeight: 600 }}>{g.name}</span>
+              {g.arrived ? (
+                <Pill tone="good">already arrived</Pill>
+              ) : (
+                <button
+                  onClick={() => setConfirming(g)}
+                  style={{
+                    border: "none",
+                    background: T.dark,
+                    color: "#fff",
+                    borderRadius: 999,
+                    padding: "6px 14px",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                  }}
+                >
+                  Check in
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {query.trim().length >= 2 && matches.length === 0 && (
+        <p style={{ color: T.sub, fontSize: 13, marginTop: 10 }}>No matching guest found.</p>
+      )}
+
+      {confirming && (
+        <div
+          onClick={() => setConfirming(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(20,20,10,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: T.card,
+              borderRadius: T.radius,
+              padding: 24,
+              maxWidth: 340,
+              width: "100%",
+              textAlign: "center",
+            }}
+          >
+            <p style={{ color: T.sub, fontSize: 13, margin: 0 }}>Confirm arrival for</p>
+            <p style={{ color: T.ink, fontSize: 20, fontWeight: 700, margin: "6px 0 18px" }}>
+              {confirming.name}
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button
+                onClick={() => setConfirming(null)}
+                style={{
+                  padding: "10px 18px",
+                  borderRadius: 999,
+                  border: "none",
+                  background: T.soft,
+                  color: T.sub,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirm}
+                disabled={busyId === confirming._id}
+                style={{
+                  padding: "10px 18px",
+                  borderRadius: 999,
+                  border: "none",
+                  background: T.accent,
+                  color: T.ink,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {busyId === confirming._id ? "Checking in…" : "Confirm check-in"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CheckInScanner() {
   const [adminKey] = useState(() => localStorage.getItem(ADMIN_KEY_STORAGE) || "");
   const [scanning, setScanning] = useState(false);
@@ -229,6 +393,14 @@ export default function CheckInScanner() {
   useEffect(() => {
     fetchGuests();
   }, [fetchGuests]);
+
+  // Quiet polling so this table stays in sync with check-ins happening on
+  // the scanner page (or another admin's tab) without needing a websocket.
+  useEffect(() => {
+    if (!adminKey) return;
+    const id = setInterval(fetchGuests, 6000);
+    return () => clearInterval(id);
+  }, [adminKey, fetchGuests]);
 
   const handleMarkArrived = async (id) => {
     const guest = guests.find((g) => g._id === id);
@@ -549,6 +721,10 @@ export default function CheckInScanner() {
           <ArrivalsTable guests={guests} onMarkArrived={handleMarkArrived} busyId={busyId} />
         )}
       </div>
+
+      {!guestsLoading && (
+        <ManualCheckIn guests={guests} onMarkArrived={handleMarkArrived} busyId={busyId} />
+      )}
     </Shell>
   );
 }

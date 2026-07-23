@@ -493,6 +493,15 @@ export default function GuestQrCodes() {
     }
   };
 
+  // Quiet polling so this table stays in sync with check-ins happening on
+  // the scanner page (or another admin's tab) without needing a websocket.
+  useEffect(() => {
+    if (keyStatus !== "valid") return;
+    const id = setInterval(fetchGuests, 6000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keyStatus]);
+
   const addNames = async (names) => {
     if (names.length === 0) return;
     try {
