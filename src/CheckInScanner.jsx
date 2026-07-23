@@ -691,6 +691,10 @@ export default function CheckInScanner() {
         )}
       </div>
 
+      {!guestsLoading && (
+        <ManualCheckIn guests={guests} onMarkArrived={handleMarkArrived} busyId={busyId} />
+      )}
+
       {guestsError && (
         <div
           style={{
@@ -721,10 +725,6 @@ export default function CheckInScanner() {
           <ArrivalsTable guests={guests} onMarkArrived={handleMarkArrived} busyId={busyId} />
         )}
       </div>
-
-      {!guestsLoading && (
-        <ManualCheckIn guests={guests} onMarkArrived={handleMarkArrived} busyId={busyId} />
-      )}
     </Shell>
   );
 }

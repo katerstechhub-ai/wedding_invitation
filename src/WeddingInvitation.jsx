@@ -66,6 +66,8 @@ const GUEST_UPLOAD_URL = "https://mediahub-frontend-4tdp.vercel.app";
 const API_BASE =
   import.meta.env.VITE_GUEST_API_URL || "https://wedding-guest-backend-b9g8.onrender.com/api";
 
+const RSVP_DONE_KEY = "wi_rsvp_done_v1";
+
 // ─────────────────────────────────────────────────────────
 // Global styles
 // ─────────────────────────────────────────────────────────
@@ -156,8 +158,14 @@ function GlobalInviteStyles() {
       .wi-tap-icon { animation: wi-tap-bob 1.6s ease-in-out infinite; }
       .wi-tap-ripple { animation: wi-tap-ripple 1.6s ease-out infinite; }
 
+      @keyframes wi-pulse-dot {
+        0%,100% { transform: scale(1); opacity: 1; }
+        50%     { transform: scale(1.5); opacity: 0.6; }
+      }
+      .wi-pulse-dot { animation: wi-pulse-dot 1.4s ease-in-out infinite; }
+
       @media (prefers-reduced-motion: reduce) {
-        .wi-tap-icon, .wi-tap-ripple, .wi-candle { animation: none; }
+        .wi-tap-icon, .wi-tap-ripple, .wi-candle, .wi-pulse-dot { animation: none; }
       }
     `}</style>
   );
@@ -272,7 +280,7 @@ function CountdownBlock({ value, label }) {
 // ─────────────────────────────────────────────────────────
 // Bottom nav
 // ─────────────────────────────────────────────────────────
-function BottomNav({ active, onNavigate }) {
+function BottomNav({ active, onNavigate, rsvpDone }) {
   const items = [
     { id: "home", icon: FaHome, label: "Home" },
     { id: "couple", icon: FaUserFriends, label: "Houses" },
@@ -290,6 +298,7 @@ function BottomNav({ active, onNavigate }) {
       {items.map((item) => {
         const Icon = item.icon;
         const isActive = active === item.id;
+        const needsAttention = item.id === "rsvp" && !rsvpDone;
         return (
           <button
             key={item.id}
@@ -303,7 +312,18 @@ function BottomNav({ active, onNavigate }) {
                 style={{ background: "linear-gradient(135deg,#7a1220,#4a0a12)" }}
               />
             )}
-            <Icon className="relative" size={14} />
+            <span className="relative" style={{ position: "relative" }}>
+              <Icon className="relative" size={14} />
+              {needsAttention && (
+                <span
+                  className="wi-pulse-dot absolute rounded-full"
+                  style={{
+                    top: -3, right: -4, width: 6, height: 6,
+                    background: "#e8a24a", border: "1px solid #1c1a15",
+                  }}
+                />
+              )}
+            </span>
             <span className="relative">{item.label}</span>
           </button>
         );
@@ -365,21 +385,41 @@ function DressCodeSection() {
 // ─────────────────────────────────────────────────────────
 // RSVP form
 // ─────────────────────────────────────────────────────────
-function WishesForm({ token, prefillName }) {
+function WishesForm({ token, prefillName, onSubmitted }) {
   const [name, setName] = useState(prefillName || "");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
-  const [attending, setAttending] = useState("yes");
+  const [attending, setAttending] = useState(""); // no default — guest must actively choose
   const [status, setStatus] = useState("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     if (prefillName) setName(prefillName);
   }, [prefillName]);
 
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const validate = () => {
+    const errs = {};
+    if (!name.trim()) errs.name = "Please tell us your name.";
+    if (!email.trim()) errs.email = "Please enter your email.";
+    else if (!EMAIL_RE.test(email.trim())) errs.email = "That email doesn't look right.";
+    if (!attending) errs.attending = "Please let us know — yes, maybe, or no.";
+    if (!message.trim()) errs.message = "Please leave a word for the couple.";
+    return errs;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim() || !message.trim()) return;
+
+    const errs = validate();
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setStatus("error");
+      setErrorMsg("Please fill in everything below before sending your raven.");
+      return;
+    }
 
     setStatus("sending");
     setErrorMsg("");
@@ -403,11 +443,15 @@ function WishesForm({ token, prefillName }) {
       }
       setStatus("sent");
       setMessage("");
+      onSubmitted?.();
     } catch {
       setErrorMsg("Could not reach the server — try again shortly.");
       setStatus("error");
     }
   };
+
+  const fieldBorder = (field) =>
+    fieldErrors[field] ? "1px solid #b23b3b" : "1px solid #7a5a2c";
 
   return (
     <motion.div
@@ -421,10 +465,10 @@ function WishesForm({ token, prefillName }) {
         border: "1px solid #7a5a2c",
       }}
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} noValidate className="space-y-5">
         <div>
           <label className="text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.3em" }}>
-            Your Name
+            Your Name *
           </label>
           <input
             type="text"
@@ -433,38 +477,47 @@ function WishesForm({ token, prefillName }) {
             readOnly={!!token}
             className="mt-1 w-full bg-transparent pb-2 text-sm outline-none"
             style={{
-              borderBottom: "1px solid #7a5a2c",
+              borderBottom: fieldBorder("name"),
               color: "#1c1a15",
               opacity: token ? 0.75 : 1,
             }}
             placeholder="Enter your name, my lord/lady"
           />
+          {fieldErrors.name && (
+            <p className="mt-1 text-xs" style={{ color: "#b23b3b" }}>{fieldErrors.name}</p>
+          )}
         </div>
 
         <div>
           <label className="text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.3em" }}>
-            Your Email
+            Your Email *
           </label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="mt-1 w-full bg-transparent pb-2 text-sm outline-none"
-            style={{ borderBottom: "1px solid #7a5a2c", color: "#1c1a15" }}
+            style={{ borderBottom: fieldBorder("email"), color: "#1c1a15" }}
             placeholder="In case we need to reach you"
           />
+          {fieldErrors.email && (
+            <p className="mt-1 text-xs" style={{ color: "#b23b3b" }}>{fieldErrors.email}</p>
+          )}
         </div>
 
         <div>
           <label className="text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.3em" }}>
-            Will you answer the summons?
+            Will you answer the summons? *
           </label>
-          <div className="mt-2 flex gap-2">
+          <div
+            className="mt-2 flex gap-2 rounded-full p-1"
+            style={{ border: fieldErrors.attending ? "1px solid #b23b3b" : "1px solid transparent" }}
+          >
             {["yes", "maybe", "no"].map((opt) => (
               <button
                 type="button"
                 key={opt}
-                onClick={() => setAttending(opt)}
+                onClick={() => { setAttending(opt); setFieldErrors((f) => ({ ...f, attending: undefined })); }}
                 className="flex-1 rounded-full px-3 py-1.5 text-xs capitalize transition"
                 style={
                   attending === opt
@@ -476,6 +529,9 @@ function WishesForm({ token, prefillName }) {
               </button>
             ))}
           </div>
+          {fieldErrors.attending && (
+            <p className="mt-1 text-xs" style={{ color: "#b23b3b" }}>{fieldErrors.attending}</p>
+          )}
         </div>
 
         <div>
@@ -487,9 +543,12 @@ function WishesForm({ token, prefillName }) {
             onChange={(e) => setMessage(e.target.value)}
             rows={3}
             className="mt-1 w-full resize-none bg-transparent pb-2 text-sm outline-none"
-            style={{ borderBottom: "1px solid #7a5a2c", color: "#1c1a15" }}
+            style={{ borderBottom: fieldBorder("message"), color: "#1c1a15" }}
             placeholder="Write your blessing..."
           />
+          {fieldErrors.message && (
+            <p className="mt-1 text-xs" style={{ color: "#b23b3b" }}>{fieldErrors.message}</p>
+          )}
         </div>
 
         <motion.button
@@ -515,7 +574,7 @@ function WishesForm({ token, prefillName }) {
           </p>
         )}
         {status === "error" && (
-          <p className="text-center text-xs" style={{ color: "#7a1220" }}>
+          <p className="text-center text-xs font-semibold" style={{ color: "#7a1220" }}>
             {errorMsg || "The raven could not fly — try again shortly."}
           </p>
         )}
@@ -733,9 +792,26 @@ function CoverScreen({ onOpen, guestName }) {
             </h1>
             <div className="wi-inkline mt-5 h-px w-24 opacity-70" />
             {guestName && (
-              <p className="mt-4 text-xs italic" style={{ color: "#4a2810" }}>
-                unto {guestName}
-              </p>
+              <div
+                className="mt-5 rounded-full px-5 py-2"
+                style={{
+                  background: "rgba(122,18,32,0.08)",
+                  border: "1px solid rgba(122,18,32,0.35)",
+                }}
+              >
+                <p
+                  className="font-serif text-[9px] uppercase"
+                  style={{ letterSpacing: "0.3em", color: "#5a3a1a" }}
+                >
+                  A summons unto
+                </p>
+                <p
+                  className="mt-1 text-lg font-bold"
+                  style={{ color: "#7a1220", letterSpacing: "0.02em" }}
+                >
+                  {guestName}
+                </p>
+              </div>
             )}
             <p className="font-serif mt-4 text-[10px]" style={{ letterSpacing: "0.35em", color: "#5a3a1a" }}>
               {EVENT.date.toUpperCase()}
@@ -851,6 +927,55 @@ function CoverScreen({ onOpen, guestName }) {
 }
 
 // ─────────────────────────────────────────────────────────
+// RSVP reminder toast
+// ─────────────────────────────────────────────────────────
+function RsvpReminder({ onScrollToRsvp, onDismiss }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 20 }}
+      transition={{ duration: 0.4 }}
+      className="fixed bottom-24 left-1/2 z-40 -translate-x-1/2 px-5 py-3"
+      style={{
+        width: "min(90vw, 340px)",
+        borderRadius: 16,
+        background: "linear-gradient(135deg,#1c1a15,#0a0a07)",
+        border: "1px solid #c9a24a",
+        boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+      }}
+    >
+      <p className="text-xs font-semibold" style={{ color: "#efe3c2" }}>
+        You haven't sent your raven yet 🕊
+      </p>
+      <p className="mt-1 text-[11px]" style={{ color: "#c9a24a" }}>
+        Please RSVP so we know to expect you.
+      </p>
+      <div className="mt-3 flex gap-2">
+        <button
+          onClick={onScrollToRsvp}
+          className="flex-1 rounded-full py-1.5 text-[10px] uppercase"
+          style={{
+            letterSpacing: "0.2em",
+            color: "#1c1a15",
+            background: "#c9a24a",
+          }}
+        >
+          RSVP now
+        </button>
+        <button
+          onClick={onDismiss}
+          className="rounded-full px-3 py-1.5 text-[10px] uppercase"
+          style={{ letterSpacing: "0.2em", color: "#9c7a2e", border: "1px solid #4a3a1e" }}
+        >
+          Later
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
 // MAIN
 // ─────────────────────────────────────────────────────────
 export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
@@ -859,6 +984,10 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
   const [activeNav, setActiveNav] = useState("home");
   const [guestName, setGuestName] = useState(guestNameProp);
   const [guestToken, setGuestToken] = useState("");
+  const [rsvpDone, setRsvpDone] = useState(
+    () => typeof window !== "undefined" && localStorage.getItem(RSVP_DONE_KEY) === "1"
+  );
+  const [showReminder, setShowReminder] = useState(false);
   const audioRef = useRef(null);
   const countdown = useCountdown(EVENT.weddingDateTimeISO);
 
@@ -894,9 +1023,37 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
     return () => { document.body.style.overflow = ""; };
   }, [opened]);
 
+  // Gently nudge guests who haven't RSVP'd yet — appears a little while
+  // after opening the invite, not immediately, so it doesn't feel like a wall.
+  useEffect(() => {
+    if (!opened || rsvpDone) return;
+    const id = setTimeout(() => setShowReminder(true), 15000);
+    return () => clearTimeout(id);
+  }, [opened, rsvpDone]);
+
+  // Best-effort nudge if someone tries to close/leave the tab without RSVPing.
+  // Browsers show their own generic message and ignore custom text, but it
+  // still gives guests one more chance to notice before they leave.
+  useEffect(() => {
+    const handler = (e) => {
+      if (rsvpDone) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [rsvpDone]);
+
   const scrollTo = (id) => {
     setActiveNav(id);
+    setShowReminder(false);
     sectionRefs[id]?.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleRsvpSubmitted = () => {
+    localStorage.setItem(RSVP_DONE_KEY, "1");
+    setRsvpDone(true);
+    setShowReminder(false);
   };
 
   useEffect(() => {
@@ -1163,7 +1320,7 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
             Answer the Summons
           </p>
           <div className="mt-6">
-            <WishesForm token={guestToken} prefillName={guestName} />
+            <WishesForm token={guestToken} prefillName={guestName} onSubmitted={handleRsvpSubmitted} />
           </div>
         </section>
 
@@ -1192,7 +1349,16 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
         </motion.footer>
       </motion.div>
 
-      {opened && <BottomNav active={activeNav} onNavigate={scrollTo} />}
+      {opened && <BottomNav active={activeNav} onNavigate={scrollTo} rsvpDone={rsvpDone} />}
+
+      <AnimatePresence>
+        {opened && showReminder && !rsvpDone && (
+          <RsvpReminder
+            onScrollToRsvp={() => scrollTo("rsvp")}
+            onDismiss={() => setShowReminder(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
