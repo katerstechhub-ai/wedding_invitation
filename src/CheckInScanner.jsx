@@ -69,7 +69,7 @@ function Pill({ children, tone = "muted" }) {
 // Same guest table as the Guest QR Codes page, minus the RSVP-message
 // click-through and the QR/delete columns — this page is just for
 // watching who's arrived while scanning.
-function ArrivalsTable({ guests, onToggleArrived, busyId }) {
+function ArrivalsTable({ guests, onMarkArrived, busyId }) {
   if (guests.length === 0)
     return (
       <p style={{ marginTop: 20, color: T.sub, fontSize: 14 }}>
@@ -138,13 +138,43 @@ function ArrivalsTable({ guests, onToggleArrived, busyId }) {
                   <Pill tone={toneFor(g.attending)}>{g.attending || "no RSVP"}</Pill>
                 </td>
                 <td style={{ padding: "12px", textAlign: "center" }}>
-                  <input
-                    type="checkbox"
-                    checked={g.arrived}
-                    disabled={busyId === g._id}
-                    onChange={() => onToggleArrived(g._id)}
-                    style={{ width: 18, height: 18, cursor: "pointer", accentColor: T.accent }}
-                  />
+                  {g.arrived ? (
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 24,
+                        height: 24,
+                        borderRadius: "50%",
+                        background: T.good,
+                        color: "#fff",
+                        fontSize: 13,
+                        fontWeight: 700,
+                      }}
+                      aria-label="Arrived"
+                      title="Arrived"
+                    >
+                      ✓
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => onMarkArrived(g._id)}
+                      disabled={busyId === g._id}
+                      style={{
+                        border: "none",
+                        background: T.dark,
+                        color: "#fff",
+                        borderRadius: 999,
+                        padding: "6px 14px",
+                        fontSize: 12,
+                        fontWeight: 500,
+                        cursor: busyId === g._id ? "default" : "pointer",
+                      }}
+                    >
+                      Mark arrived
+                    </button>
+                  )}
                 </td>
                 <td style={{ padding: "12px", color: T.sub, fontSize: 12, borderRadius: "0 12px 12px 0" }}>
                   {g.arrivalTime ? new Date(g.arrivalTime).toLocaleTimeString() : "—"}
@@ -200,7 +230,10 @@ export default function CheckInScanner() {
     fetchGuests();
   }, [fetchGuests]);
 
-  const handleToggleArrived = async (id) => {
+  const handleMarkArrived = async (id) => {
+    const guest = guests.find((g) => g._id === id);
+    if (guest?.arrived) return; // already arrived — this page can't undo it
+
     setBusyId(id);
     try {
       setGuestsError("");
@@ -513,7 +546,7 @@ export default function CheckInScanner() {
         {guestsLoading ? (
           <p style={{ color: T.sub, fontSize: 14 }}>Loading guest list…</p>
         ) : (
-          <ArrivalsTable guests={guests} onToggleArrived={handleToggleArrived} busyId={busyId} />
+          <ArrivalsTable guests={guests} onMarkArrived={handleMarkArrived} busyId={busyId} />
         )}
       </div>
     </Shell>
