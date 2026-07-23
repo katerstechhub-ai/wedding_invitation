@@ -353,6 +353,28 @@ function ManualCheckIn({ guests, onMarkArrived, busyId }) {
   );
 }
 
+// Card shell — kept at module scope (not defined inside CheckInScanner) so
+// its component identity stays stable across re-renders. Defining it inside
+// the component would recreate the function every render, which makes React
+// unmount and remount the whole subtree below it (including ManualCheckIn)
+// on every re-render — wiping out the search box's local state every time
+// the guest list polls.
+function Shell({ children }) {
+  return (
+    <div style={{ background: T.bg, minHeight: "100vh", fontFamily: T.font, padding: "28px 16px" }}>
+      <div style={{ maxWidth: 520, margin: "0 auto" }}>
+        <div style={{ marginBottom: 20 }}>
+          <h1 style={{ color: T.ink, margin: 0, fontSize: 26, fontWeight: 700 }}>Entrance Check-In</h1>
+          <p style={{ color: T.sub, fontSize: 14, margin: "4px 0 0" }}>
+            Scan a guest's QR to mark them as arrived.
+          </p>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export default function CheckInScanner() {
   const [adminKey] = useState(() => localStorage.getItem(ADMIN_KEY_STORAGE) || "");
   const [scanning, setScanning] = useState(false);
@@ -504,21 +526,6 @@ export default function CheckInScanner() {
     setResult(null);
     startScanner();
   };
-
-  // Card shell
-  const Shell = ({ children }) => (
-    <div style={{ background: T.bg, minHeight: "100vh", fontFamily: T.font, padding: "28px 16px" }}>
-      <div style={{ maxWidth: 520, margin: "0 auto" }}>
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ color: T.ink, margin: 0, fontSize: 26, fontWeight: 700 }}>Entrance Check-In</h1>
-          <p style={{ color: T.sub, fontSize: 14, margin: "4px 0 0" }}>
-            Scan a guest's QR to mark them as arrived.
-          </p>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
 
   if (!adminKey) {
     return (

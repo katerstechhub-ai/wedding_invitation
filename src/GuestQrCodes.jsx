@@ -43,6 +43,43 @@ function EyeIcon({ off }) {
   );
 }
 
+function CopyIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="M8.6 13.5 15.4 17.5M15.4 6.5 8.6 10.5" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.sub} strokeWidth="2">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+
 function Card({ children, style }) {
   return (
     <div
@@ -94,6 +131,20 @@ function toneFor(attending) {
 
 // ── Message Modal ───────────────────────────────────────────
 function MessageModal({ guest, onClose }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyEmail = async (e) => {
+    e.stopPropagation();
+    if (!guest.email) return;
+    try {
+      await navigator.clipboard.writeText(guest.email);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+
   return (
     <div
       onClick={onClose}
@@ -143,7 +194,30 @@ function MessageModal({ guest, onClose }) {
 
         <p style={{ fontWeight: 700, fontSize: 18, color: T.ink, margin: 0 }}>{guest.name}</p>
         {guest.email && (
-          <p style={{ fontSize: 12, color: T.sub, marginTop: 2 }}>{guest.email}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+            <p style={{ fontSize: 12, color: T.sub, margin: 0 }}>{guest.email}</p>
+            <button
+              onClick={handleCopyEmail}
+              aria-label="Copy email"
+              title={copied ? "Copied!" : "Copy email"}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 22,
+                height: 22,
+                padding: 0,
+                border: "none",
+                borderRadius: 6,
+                background: copied ? T.goodBg : T.soft,
+                color: copied ? T.good : T.sub,
+                cursor: "pointer",
+                flexShrink: 0,
+              }}
+            >
+              {copied ? <CheckIcon /> : <CopyIcon />}
+            </button>
+          </div>
         )}
 
         <div style={{ marginTop: 14 }}>
@@ -173,6 +247,7 @@ function MessageModal({ guest, onClose }) {
 function QrModal({ guest, onClose }) {
   const canvasWrapperRef = useRef(null);
   const guestUrl = `${SITE_URL}/?token=${encodeURIComponent(guest.token)}`;
+  const [shareState, setShareState] = useState("idle"); // idle | sharing | copied | error
 
   const handleDownload = () => {
     const canvas = canvasWrapperRef.current.querySelector("canvas");
@@ -182,6 +257,66 @@ function QrModal({ guest, onClose }) {
     link.href = canvas.toDataURL("image/png");
     link.click();
   };
+
+  const handleShare = async () => {
+    const canvas = canvasWrapperRef.current.querySelector("canvas");
+    setShareState("sharing");
+
+    const shareText = `Here's ${guest.name}'s check-in QR code for the wedding.`;
+
+    try {
+      // Prefer sharing the actual QR image (WhatsApp, etc. show it as a photo)
+      if (canvas && navigator.canShare) {
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+        if (blob) {
+          const file = new File([blob], `qr-${guest.name.replace(/\s+/g, "_")}.png`, {
+            type: "image/png",
+          });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: `${guest.name}'s QR code`,
+              text: shareText,
+            });
+            setShareState("idle");
+            return;
+          }
+        }
+      }
+
+      // Fall back to sharing just the link
+      if (navigator.share) {
+        await navigator.share({ title: `${guest.name}'s QR code`, text: shareText, url: guestUrl });
+        setShareState("idle");
+        return;
+      }
+
+      // Desktop / unsupported browsers: copy the link instead
+      await navigator.clipboard.writeText(guestUrl);
+      setShareState("copied");
+      setTimeout(() => setShareState("idle"), 1800);
+    } catch (err) {
+      if (err && err.name === "AbortError") {
+        setShareState("idle"); // user cancelled the native share sheet
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(guestUrl);
+        setShareState("copied");
+        setTimeout(() => setShareState("idle"), 1800);
+      } catch {
+        setShareState("error");
+        setTimeout(() => setShareState("idle"), 1800);
+      }
+    }
+  };
+
+  const shareLabel = {
+    idle: "Share",
+    sharing: "Sharing…",
+    copied: "Link copied!",
+    error: "Couldn't share",
+  }[shareState];
 
   return (
     <div
@@ -248,33 +383,54 @@ function QrModal({ guest, onClose }) {
           {guestUrl}
         </p>
 
-        <button
-          onClick={handleDownload}
-          style={{
-            marginTop: 18,
-            padding: "10px 20px",
-            fontSize: 13,
-            fontWeight: 600,
-            borderRadius: 999,
-            border: "none",
-            color: T.accentInk,
-            background: T.accent,
-            cursor: "pointer",
-          }}
-        >
-          Download PNG
-        </button>
+        <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 18 }}>
+          <button
+            onClick={handleShare}
+            disabled={shareState === "sharing"}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "10px 18px",
+              fontSize: 13,
+              fontWeight: 600,
+              borderRadius: 999,
+              border: "none",
+              color: T.accentInk,
+              background: T.accent,
+              cursor: shareState === "sharing" ? "default" : "pointer",
+            }}
+          >
+            <ShareIcon />
+            {shareLabel}
+          </button>
+          <button
+            onClick={handleDownload}
+            style={{
+              padding: "10px 18px",
+              fontSize: 13,
+              fontWeight: 600,
+              borderRadius: 999,
+              border: "none",
+              color: "#fff",
+              background: T.dark,
+              cursor: "pointer",
+            }}
+          >
+            Download PNG
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
 // ── Guest table ─────────────────────────────────────────────
-function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage, busyId }) {
+function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage, busyId, emptyMessage }) {
   if (guests.length === 0)
     return (
       <p style={{ marginTop: 20, color: T.sub, fontSize: 14 }}>
-        No guests yet. Add your first guest above.
+        {emptyMessage || "No guests yet. Add your first guest above."}
       </p>
     );
 
@@ -412,6 +568,7 @@ export default function GuestQrCodes() {
   const [bulkText, setBulkText] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [guests, setGuests] = useState([]);
+  const [tableSearch, setTableSearch] = useState("");
   const [modalGuest, setModalGuest] = useState(null);
   const [modalMessage, setModalMessage] = useState(null);
 
@@ -596,6 +753,10 @@ export default function GuestQrCodes() {
   const rsvpYes = guests.filter((g) => g.attending === "yes").length;
 
   const canUse = keyStatus === "valid";
+
+  const filteredGuests = tableSearch.trim()
+    ? guests.filter((g) => g.name.toLowerCase().includes(tableSearch.trim().toLowerCase()))
+    : guests;
 
   return (
     <div style={{ background: T.bg, minHeight: "100vh", fontFamily: T.font, padding: "28px 16px" }}>
@@ -824,14 +985,53 @@ export default function GuestQrCodes() {
               Enter your admin key above to load the guest list.
             </p>
           ) : (
-            <GuestTable
-              guests={guests}
-              onToggleArrived={handleToggleArrived}
-              onDelete={handleDelete}
-              onOpenQr={setModalGuest}
-              onOpenMessage={setModalMessage}
-              busyId={busyId}
-            />
+            <>
+              {guests.length > 0 && (
+                <div style={{ position: "relative", marginTop: 18 }}>
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 14,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      display: "flex",
+                    }}
+                  >
+                    <SearchIcon />
+                  </div>
+                  <input
+                    type="text"
+                    value={tableSearch}
+                    onChange={(e) => setTableSearch(e.target.value)}
+                    placeholder="Search guests by name…"
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px 12px 38px",
+                      borderRadius: 999,
+                      border: "none",
+                      background: T.soft,
+                      fontSize: 14,
+                      color: T.ink,
+                      boxSizing: "border-box",
+                      outline: "none",
+                    }}
+                  />
+                </div>
+              )}
+              <GuestTable
+                guests={filteredGuests}
+                onToggleArrived={handleToggleArrived}
+                onDelete={handleDelete}
+                onOpenQr={setModalGuest}
+                onOpenMessage={setModalMessage}
+                busyId={busyId}
+                emptyMessage={
+                  tableSearch.trim()
+                    ? `No guests match "${tableSearch.trim()}".`
+                    : "No guests yet. Add your first guest above."
+                }
+              />
+            </>
           )}
         </Card>
       </div>
