@@ -139,6 +139,74 @@ function guestTypeTone(guestType) {
   return guestType === "physical" ? "warn" : "muted";
 }
 
+// ── Confirm Modal (replaces window.confirm) ────────────────
+function ConfirmModal({ title, body, confirmLabel, onConfirm, onCancel }) {
+  return (
+    <div
+      onClick={onCancel}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(20,20,10,0.45)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1100,
+        padding: 16,
+        backdropFilter: "blur(4px)",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: T.card,
+          borderRadius: T.radius,
+          padding: 24,
+          maxWidth: 340,
+          width: "100%",
+          textAlign: "center",
+          boxShadow: "0 30px 60px rgba(0,0,0,0.25)",
+        }}
+      >
+        <p style={{ color: T.ink, fontSize: 16, fontWeight: 700, margin: 0 }}>{title}</p>
+        {body && (
+          <p style={{ color: T.sub, fontSize: 13, marginTop: 8, marginBottom: 0 }}>{body}</p>
+        )}
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 18 }}>
+          <button
+            onClick={onCancel}
+            style={{
+              padding: "10px 18px",
+              borderRadius: 999,
+              border: "none",
+              background: T.soft,
+              color: T.sub,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{
+              padding: "10px 18px",
+              borderRadius: 999,
+              border: "none",
+              background: T.bad,
+              color: "#fff",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {confirmLabel || "Confirm"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Message Modal ───────────────────────────────────────────
 function MessageModal({ guest, onClose }) {
   const [copied, setCopied] = useState(false);
@@ -462,6 +530,8 @@ function QrModal({ guest, onClose }) {
 
 // ── Guest table ─────────────────────────────────────────────
 function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage, busyId, emptyMessage }) {
+  const [pendingDelete, setPendingDelete] = useState(null); // guest pending delete confirmation
+
   if (guests.length === 0)
     return (
       <p style={{ marginTop: 20, color: T.sub, fontSize: 14 }}>
@@ -571,11 +641,7 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
                 </td>
                 <td style={{ padding: "12px", textAlign: "center", borderRadius: "0 12px 12px 0" }}>
                   <button
-                    onClick={() => {
-                      if (window.confirm(`Remove ${g.name} from the guest list?`)) {
-                        onDelete(g._id);
-                      }
-                    }}
+                    onClick={() => setPendingDelete(g)}
                     disabled={busyId === g._id}
                     style={{
                       border: "none",
@@ -598,6 +664,19 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
           </tbody>
         </table>
       </div>
+
+      {pendingDelete && (
+        <ConfirmModal
+          title={`Remove ${pendingDelete.name}?`}
+          body="This can't be undone."
+          confirmLabel="Remove"
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            onDelete(pendingDelete._id);
+            setPendingDelete(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -621,6 +700,7 @@ export default function GuestQrCodes() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
+  const [pendingSignOut, setPendingSignOut] = useState(false);
 
   const authHeaders = (key = adminKey) => ({
     "Content-Type": "application/json",
@@ -822,7 +902,7 @@ export default function GuestQrCodes() {
           </div>
           {canUse && (
             <button
-              onClick={handleForgetKey}
+              onClick={() => setPendingSignOut(true)}
               style={{
                 background: T.dark,
                 color: "#fff",
@@ -1118,6 +1198,18 @@ export default function GuestQrCodes() {
 
       {modalGuest && <QrModal guest={modalGuest} onClose={() => setModalGuest(null)} />}
       {modalMessage && <MessageModal guest={modalMessage} onClose={() => setModalMessage(null)} />}
+      {pendingSignOut && (
+        <ConfirmModal
+          title="Sign out?"
+          body="You'll need to re-enter your admin key to manage guests again."
+          confirmLabel="Sign out"
+          onCancel={() => setPendingSignOut(false)}
+          onConfirm={() => {
+            handleForgetKey();
+            setPendingSignOut(false);
+          }}
+        />
+      )}
     </div>
   );
 }
