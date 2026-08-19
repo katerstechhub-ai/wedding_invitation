@@ -53,14 +53,14 @@ const EVENT = {
   weddingDateTimeISO: "2026-11-21T14:00:00+01:00",
 };
 
-// 5 real photos: garden couple, rings close-up, sunset couple,
-// groom on staircase, bride by the window.
+// 5 real photos: garden couple, rings close-up, groom on staircase,
+// bride by the window, sunset couple on the palm-lined path (last).
 const GALLERY = [
   galleryPhoto1,
   galleryPhoto2,
-  galleryPhoto3,
   galleryPhoto4,
   galleryPhoto5,
+  galleryPhoto3,
 ];
 
 const HERO_VIDEO_POSTER = heroPhoto;
