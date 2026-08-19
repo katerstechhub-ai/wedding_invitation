@@ -21,14 +21,14 @@ const COUPLE = {
     nickname: "Bizzer",        // 
     fullName: "Kenneth Tesem Gbugho",         // 
     parents: ["Mr. Gbugho Amokaha Donald", "Mrs. Gbugho Juliana"],    // 
-    instagram: "https://instagram.com/",
+    instagram: "https://www.instagram.com/bizzare_ix?igsh=OW1pN2ExM2NqeXc2&igsi=OW1pN2ExM2NqeXc2",
     photo: bizzerPhoto,   // ⚠️ swap to groom's photo file
   },
   bride: {
     nickname: "Paloma",
     fullName: "Ruth Enuwa Ameh",
     parents: ["Mr. Augustine Ogbe Ameh", "Mrs. Agatha Ichame Ameh"],
-    instagram: "https://instagram.com/",
+    instagram: "https://www.instagram.com/ruruu_fundz?igsh=MWVmZjRwdTM5a3I4cg==&igsi=MWVmZjRwdTM5a3I4cg==",
     photo: pamsPhoto,     // ⚠️ swap to Ruth's photo file
   },
 };
