@@ -39,6 +39,15 @@ function toneFor(attending) {
   return "warn";
 }
 
+// Digital (QR) guests vs. guests carrying a printed physical invitation
+// card — card guests are always checked in by name below, never by scan.
+function guestTypeLabel(guestType) {
+  return guestType === "physical" ? "Card" : "QR";
+}
+function guestTypeTone(guestType) {
+  return guestType === "physical" ? "warn" : "muted";
+}
+
 function Pill({ children, tone = "muted" }) {
   const tones = {
     good: { bg: T.goodBg, fg: T.good },
@@ -118,6 +127,7 @@ function ArrivalsTable({ guests, onMarkArrived, busyId }) {
             <tr style={{ textAlign: "left", color: T.sub, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6 }}>
               <th style={{ padding: "10px 12px", fontWeight: 600 }}>#</th>
               <th style={{ padding: "10px 12px", fontWeight: 600 }}>Guest</th>
+              <th style={{ padding: "10px 12px", fontWeight: 600 }}>Type</th>
               <th style={{ padding: "10px 12px", fontWeight: 600 }}>RSVP</th>
               <th style={{ padding: "10px 12px", fontWeight: 600, textAlign: "center" }}>Arrived</th>
               <th style={{ padding: "10px 12px", fontWeight: 600 }}>Time</th>
@@ -134,6 +144,9 @@ function ArrivalsTable({ guests, onMarkArrived, busyId }) {
               >
                 <td style={{ padding: "12px", color: T.sub, borderRadius: "12px 0 0 12px" }}>{i + 1}</td>
                 <td style={{ padding: "12px", color: T.ink, fontWeight: 600 }}>{g.name}</td>
+                <td style={{ padding: "12px" }}>
+                  <Pill tone={guestTypeTone(g.guestType)}>{guestTypeLabel(g.guestType)}</Pill>
+                </td>
                 <td style={{ padding: "12px" }}>
                   <Pill tone={toneFor(g.attending)}>{g.attending || "no RSVP"}</Pill>
                 </td>
@@ -181,7 +194,7 @@ function ArrivalsTable({ guests, onMarkArrived, busyId }) {
                 </td>
               </tr>
             ))}
-            <tr><td colSpan={5} style={{ height: 6 }} /></tr>
+            <tr><td colSpan={6} style={{ height: 6 }} /></tr>
           </tbody>
         </table>
       </div>
@@ -189,7 +202,8 @@ function ArrivalsTable({ guests, onMarkArrived, busyId }) {
   );
 }
 
-// Fallback for guests without a QR code on hand. Deliberately requires
+// Fallback for guests without a QR code on hand — either a physical-card
+// guest, or a digital guest who lost/forgot their QR. Deliberately requires
 // picking the exact guest and confirming, rather than a single tap, so it
 // isn't a low-friction way to wave people in.
 function ManualCheckIn({ guests, onMarkArrived, busyId }) {
@@ -224,7 +238,8 @@ function ManualCheckIn({ guests, onMarkArrived, busyId }) {
         No QR code?
       </h2>
       <p style={{ color: T.sub, fontSize: 13, margin: "0 0 12px" }}>
-        Search their name and confirm — only use this when a guest genuinely can't present their code.
+        Search their name and confirm. Use this for physical-card guests (marked "Card"
+        below) and for anyone who genuinely can't present their QR code.
       </p>
       <input
         type="text"
@@ -257,7 +272,10 @@ function ManualCheckIn({ guests, onMarkArrived, busyId }) {
                 background: T.soft,
               }}
             >
-              <span style={{ fontSize: 14, color: T.ink, fontWeight: 600 }}>{g.name}</span>
+              <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14, color: T.ink, fontWeight: 600 }}>{g.name}</span>
+                <Pill tone={guestTypeTone(g.guestType)}>{guestTypeLabel(g.guestType)}</Pill>
+              </span>
               {g.arrived ? (
                 <Pill tone="good">already arrived</Pill>
               ) : (
@@ -312,9 +330,12 @@ function ManualCheckIn({ guests, onMarkArrived, busyId }) {
             }}
           >
             <p style={{ color: T.sub, fontSize: 13, margin: 0 }}>Confirm arrival for</p>
-            <p style={{ color: T.ink, fontSize: 20, fontWeight: 700, margin: "6px 0 18px" }}>
+            <p style={{ color: T.ink, fontSize: 20, fontWeight: 700, margin: "6px 0 6px" }}>
               {confirming.name}
             </p>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+              <Pill tone={guestTypeTone(confirming.guestType)}>{guestTypeLabel(confirming.guestType)}</Pill>
+            </div>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
               <button
                 onClick={() => setConfirming(null)}
@@ -482,6 +503,7 @@ export default function CheckInScanner() {
           setResult({
             name: body.name,
             attending: body.attending,
+            guestType: body.guestType,
             alreadyCheckedIn: body.alreadyCheckedIn,
           });
           fetchGuests(); // keep the table in sync with the scan

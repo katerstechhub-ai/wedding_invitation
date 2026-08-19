@@ -129,6 +129,16 @@ function toneFor(attending) {
   return "warn";
 }
 
+// Digital (QR) guests vs. guests carrying a printed physical invitation
+// card. Card guests still get a row/token, but nobody's expected to
+// scan anything for them — they're checked in by name.
+function guestTypeLabel(guestType) {
+  return guestType === "physical" ? "Card" : "QR";
+}
+function guestTypeTone(guestType) {
+  return guestType === "physical" ? "warn" : "muted";
+}
+
 // ── Message Modal ───────────────────────────────────────────
 function MessageModal({ guest, onClose }) {
   const [copied, setCopied] = useState(false);
@@ -220,8 +230,9 @@ function MessageModal({ guest, onClose }) {
           </div>
         )}
 
-        <div style={{ marginTop: 14 }}>
+        <div style={{ marginTop: 14, display: "flex", gap: 6 }}>
           <Pill tone={toneFor(guest.attending)}>{guest.attending || "No RSVP yet"}</Pill>
+          <Pill tone={guestTypeTone(guest.guestType)}>{guestTypeLabel(guest.guestType)}</Pill>
         </div>
 
         <div
@@ -373,6 +384,23 @@ function QrModal({ guest, onClose }) {
           ×
         </button>
 
+        {guest.guestType === "physical" && (
+          <p
+            style={{
+              fontSize: 11,
+              color: T.warn,
+              background: T.warnBg,
+              borderRadius: 999,
+              padding: "6px 12px",
+              display: "inline-block",
+              marginBottom: 10,
+              fontWeight: 600,
+            }}
+          >
+            Physical card guest — this QR is a backup, not their main pass
+          </p>
+        )}
+
         <div
           ref={canvasWrapperRef}
           style={{
@@ -482,6 +510,7 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
             <tr style={{ textAlign: "left", color: T.sub, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6 }}>
               <th style={{ padding: "10px 12px", fontWeight: 600 }}>#</th>
               <th style={{ padding: "10px 12px", fontWeight: 600 }}>Guest</th>
+              <th style={{ padding: "10px 12px", fontWeight: 600 }}>Type</th>
               <th style={{ padding: "10px 12px", fontWeight: 600 }}>RSVP</th>
               <th style={{ padding: "10px 12px", fontWeight: 600, textAlign: "center" }}>QR</th>
               <th style={{ padding: "10px 12px", fontWeight: 600, textAlign: "center" }}>Arrived</th>
@@ -500,6 +529,9 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
               >
                 <td style={{ padding: "12px", color: T.sub, borderRadius: "12px 0 0 12px" }}>{i + 1}</td>
                 <td style={{ padding: "12px", color: T.ink, fontWeight: 600 }}>{g.name}</td>
+                <td style={{ padding: "12px" }}>
+                  <Pill tone={guestTypeTone(g.guestType)}>{guestTypeLabel(g.guestType)}</Pill>
+                </td>
                 <td style={{ padding: "12px" }}>
                   <button
                     onClick={() => onOpenMessage(g)}
@@ -562,7 +594,7 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
               </tr>
             ))}
             {/* row spacer */}
-            <tr><td colSpan={7} style={{ height: 6 }} /></tr>
+            <tr><td colSpan={8} style={{ height: 6 }} /></tr>
           </tbody>
         </table>
       </div>
@@ -574,6 +606,7 @@ export default function GuestQrCodes() {
   const [quickName, setQuickName] = useState("");
   const [bulkText, setBulkText] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [guestType, setGuestType] = useState("digital"); // "digital" | "physical" — applies to the next guest(s) added
   const [guests, setGuests] = useState([]);
   const [tableSearch, setTableSearch] = useState("");
   const [modalGuest, setModalGuest] = useState(null);
@@ -666,14 +699,16 @@ export default function GuestQrCodes() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyStatus]);
 
-  const addNames = async (names) => {
+  // `type` defaults to whatever's currently selected in the toggle, so both
+  // the quick-add form and the bulk-add box use the same selection.
+  const addNames = async (names, type = guestType) => {
     if (names.length === 0) return;
     try {
       setError("");
       const res = await fetch(`${API_BASE}/guests/bulk`, {
         method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify({ names }),
+        body: JSON.stringify({ names, guestType: type }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -896,6 +931,44 @@ export default function GuestQrCodes() {
         {/* Add + list card */}
         <Card>
           <h2 style={{ color: T.ink, fontSize: 16, margin: "0 0 14px", fontWeight: 700 }}>Add a guest</h2>
+
+          {/* Guest type toggle — applies to whatever's added below, quick-add
+              or bulk-add, until changed again. */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 11, color: T.sub, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>
+              Guest type
+            </label>
+            <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+              {[
+                { id: "digital", label: "Digital (QR)" },
+                { id: "physical", label: "Physical card" },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setGuestType(opt.id)}
+                  style={{
+                    padding: "7px 16px",
+                    borderRadius: 999,
+                    border: "none",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    background: guestType === opt.id ? T.dark : T.soft,
+                    color: guestType === opt.id ? "#fff" : T.sub,
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p style={{ fontSize: 11, color: T.sub, marginTop: 6, marginBottom: 0 }}>
+              {guestType === "physical"
+                ? "These guests carry a printed invitation card — check them in by name, no QR needed."
+                : "These guests get a QR code for entry."}
+            </p>
+          </div>
+
           <form onSubmit={handleQuickAdd} style={{ display: "flex", gap: 8, marginBottom: 10 }}>
             <input
               type="text"

@@ -16,20 +16,20 @@ import dresscodeImage from "./assets/dresscode.jpeg";
 // DATA
 // ─────────────────────────────────────────────────────────
 const COUPLE = {
-  hashtag: "#BIZZERPAMSWEDDING",
+  hashtag: "#PALOMABIZZERWEDDING", // 
   groom: {
-    nickname: "Bizzer",
-    fullName: "Kenneth Tesem Gbugho",
-    parents: ["Mr. Gbugho Amokaha Donald", "Mrs. Gbugho Juliana"],
+    nickname: "Bizzer",        // 
+    fullName: "Kenneth Tesem Gbugho",         // 
+    parents: ["Mr. Gbugho Amokaha Donald", "Mrs. Gbugho Juliana"],    // 
     instagram: "https://instagram.com/",
-    photo: bizzerPhoto,
+    photo: bizzerPhoto,   // ⚠️ swap to groom's photo file
   },
   bride: {
-    nickname: "Pams",
-    fullName: "Paloma Austin",
-    parents: ["Mr. Budi Dharma", "Mrs. Susan Dharma"],
+    nickname: "Paloma",
+    fullName: "Ruth Enuwa Ameh",
+    parents: ["Mr. Augustine Ogbe Ameh", "Mrs. Agatha Ichame Ameh"],
     instagram: "https://instagram.com/",
-    photo: pamsPhoto,
+    photo: pamsPhoto,     // ⚠️ swap to Ruth's photo file
   },
 };
 
@@ -38,14 +38,13 @@ const EVENT = {
     "“So they are no longer two, but one flesh. Therefore what God has joined together, let no one separate.”",
   verseRef: "Matthew 19:6",
   day: "SATURDAY",
-  date: "21 OCTOBER 2026",
-  ceremonyTime: "18.00 WIB",
-  afterPartyTime: "21.00 WIB",
-  venueName: "Lausanne Ballroom — Swissôtel PIK Jakarta",
-  venueAddress:
-    "Jl. Pantai Indah Kapuk, Kamal Muara, Penjaringan, Jakarta Utara",
-  mapsUrl: "https://maps.google.com",
-  weddingDateTimeISO: "2026-10-21T18:00:00+07:00",
+  date: "21 NOVEMBER 2026",
+  ceremonyTime: "2:00 PM",
+  venueName: "Luxe Lush Park @ Riverplate Park",
+  venueAddress: "70 Kur Mohammed Avenue, Wuse 2, Abuja, Nigeria",
+  mapsUrl:
+    "https://www.google.com/maps/search/?api=1&query=Luxe+Lush+Park+Riverplate+Park+70+Kur+Mohammed+Avenue+Wuse+2+Abuja+Nigeria",
+  weddingDateTimeISO: "2026-11-21T14:00:00+01:00",
 };
 
 const GALLERY = [
@@ -374,7 +373,7 @@ function DressCodeSection() {
       >
         <img
           src={dresscodeImage}
-          alt="Black tie wedding dress code reference — men in black and white, women in espresso, burgundy, ruby, olive, or sage"
+          alt="Black tie wedding dress code reference — men in black and white, women in espresso, plum purple, ruby, olive, or sage"
           className="block w-full"
         />
       </div>
@@ -601,10 +600,12 @@ function GuestUploadSection() {
         feast — that our saga may be told in full.
       </p>
 
+      {/* Preview image — shrunk down (was maxWidth: 220) so it reads as a
+          small thumbnail preview rather than competing with the button below. */}
       <div
         className="mx-auto mt-8 overflow-hidden"
         style={{
-          maxWidth: 220,
+          maxWidth: 140,
           borderRadius: 8,
           border: "1px solid #7a5a2c",
           background: "#1c1a15",
@@ -1211,17 +1212,10 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
           </p>
           <p className="mt-2 font-serif text-2xl" style={{ letterSpacing: "0.08em" }}>{EVENT.date}</p>
           <p className="mt-1 text-xs uppercase" style={{ color: "#7a5a2c", letterSpacing: "0.25em" }}>
-            Ceremony · {EVENT.ceremonyTime}
+            Reception · {EVENT.ceremonyTime}
           </p>
 
           <div className="wi-goldline my-5 h-px w-2/3 mx-auto" />
-
-          <p className="font-serif text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.35em" }}>
-            The Feast
-          </p>
-          <p className="mt-1 text-xs uppercase" style={{ color: "#7a5a2c", letterSpacing: "0.25em" }}>
-            {EVENT.afterPartyTime}
-          </p>
 
           <motion.div
             initial={{ scale: 0.7, opacity: 0 }} whileInView={{ scale: 1, opacity: 1 }}
