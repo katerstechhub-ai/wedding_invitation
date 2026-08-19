@@ -60,7 +60,7 @@ const GALLERY = [
   galleryPhoto2,
   galleryPhoto4,
   galleryPhoto5,
-  galleryPhoto3,
+ 
 ];
 
 const HERO_VIDEO_POSTER = heroPhoto;
