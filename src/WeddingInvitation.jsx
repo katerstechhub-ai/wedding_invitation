@@ -6,8 +6,14 @@ import {
   FaCamera, FaScroll, FaHandPointer,
 } from "react-icons/fa";
 
-import pamsPhoto from "./assets/pams.jpeg";
-import bizzerPhoto from "./assets/Bizzer.jpeg";
+import pamsPhoto from "./assets/pams-solo.jpeg";
+import bizzerPhoto from "./assets/bizzer-solo.jpeg";
+import heroPhoto from "./assets/hero.jpeg";
+import galleryPhoto1 from "./assets/gallery-1.jpeg";
+import galleryPhoto2 from "./assets/gallery-2.jpeg";
+import galleryPhoto3 from "./assets/gallery-3.jpeg";
+import galleryPhoto4 from "./assets/gallery-4.jpeg";
+import galleryPhoto5 from "./assets/gallery-5.jpeg";
 import SEAL_URL from "./assets/stark-seal.png";
 import guestUploadPreview from "./assets/guest-upload-preview.jpeg";
 import dresscodeImage from "./assets/dresscode.jpeg";
@@ -22,14 +28,14 @@ const COUPLE = {
     fullName: "Kenneth Tesem Gbugho",         // 
     parents: ["Mr. Gbugho Amokaha Donald", "Mrs. Gbugho Juliana"],    // 
     instagram: "https://www.instagram.com/bizzare_ix?igsh=OW1pN2ExM2NqeXc2&igsi=OW1pN2ExM2NqeXc2",
-    photo: bizzerPhoto,   // ⚠️ swap to groom's photo file
+    photo: bizzerPhoto,
   },
   bride: {
     nickname: "Paloma",
     fullName: "Ruth Enuwa Ameh",
     parents: ["Mr. Augustine Ogbe Ameh", "Mrs. Agatha Ichame Ameh"],
     instagram: "https://www.instagram.com/ruruu_fundz?igsh=MWVmZjRwdTM5a3I4cg==&igsi=MWVmZjRwdTM5a3I4cg==",
-    photo: pamsPhoto,     // ⚠️ swap to Ruth's photo file
+    photo: pamsPhoto,
   },
 };
 
@@ -47,15 +53,17 @@ const EVENT = {
   weddingDateTimeISO: "2026-11-21T14:00:00+01:00",
 };
 
+// 5 real photos: garden couple, rings close-up, sunset couple,
+// groom on staircase, bride by the window.
 const GALLERY = [
-  "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1606800052052-a08af7148866?q=80&w=800&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1532712938310-34cb3982ef74?q=80&w=800&auto=format&fit=crop",
+  galleryPhoto1,
+  galleryPhoto2,
+  galleryPhoto3,
+  galleryPhoto4,
+  galleryPhoto5,
 ];
 
-const HERO_VIDEO_POSTER =
-  "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?q=80&w=1400&auto=format&fit=crop";
+const HERO_VIDEO_POSTER = heroPhoto;
 
 const BG_AMBIENT_MUSIC_URL = "";
 const GUEST_UPLOAD_URL = "https://mediahub-frontend-4tdp.vercel.app";
@@ -1284,7 +1292,13 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
           </h3>
           <div className="mt-6 grid grid-cols-2 gap-4">
             {GALLERY.map((src, i) => (
-              <ArchFrame key={i} src={src} alt={`Gallery ${i + 1}`} className="h-48 w-full" delay={i * 0.08} />
+              <ArchFrame
+                key={i}
+                src={src}
+                alt={`Gallery ${i + 1}`}
+                className={`h-48 w-full ${GALLERY.length % 2 === 1 && i === GALLERY.length - 1 ? "col-span-2" : ""}`}
+                delay={i * 0.08}
+              />
             ))}
           </div>
           <div className="mt-8 text-center">
