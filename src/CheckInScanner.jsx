@@ -3,7 +3,9 @@ import { Html5Qrcode } from "html5-qrcode";
 
 const API_BASE =
   import.meta.env.VITE_GUEST_API_URL || "https://wedding-guest-backend-b9g8.onrender.com/api";
-const ADMIN_KEY_STORAGE = "mediahub_wedding_admin_key";
+// Separate storage key from the Guest QR Codes page — this page has its
+// own admin key, entered and validated independently.
+const CHECKIN_ADMIN_KEY_STORAGE = "mediahub_checkin_admin_key";
 
 const T = {
   bg: "#efeae0",
@@ -46,6 +48,21 @@ function guestTypeLabel(guestType) {
 }
 function guestTypeTone(guestType) {
   return guestType === "physical" ? "warn" : "muted";
+}
+
+function EyeIcon({ off }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.sub} strokeWidth="2">
+      {off ? (
+        <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-10-7-10-7a18.7 18.7 0 0 1 4.22-5.34M9.9 4.24A10.94 10.94 0 0 1 12 5c7 0 10 7 10 7a18.7 18.7 0 0 1-2.16 3.19M1 1l22 22" />
+      ) : (
+        <>
+          <path d="M1 12s3-7 11-7 11 7 11 7-3 7-11 7-11-7-11-7Z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      )}
+    </svg>
+  );
 }
 
 function Pill({ children, tone = "muted" }) {
@@ -397,7 +414,13 @@ function Shell({ children }) {
 }
 
 export default function CheckInScanner() {
-  const [adminKey] = useState(() => localStorage.getItem(ADMIN_KEY_STORAGE) || "");
+  // Own admin key for this page — separate from the Guest QR Codes page's key.
+  const [adminKey, setAdminKey] = useState(
+    () => localStorage.getItem(CHECKIN_ADMIN_KEY_STORAGE) || ""
+  );
+  const [showKey, setShowKey] = useState(false);
+  const [keyStatus, setKeyStatus] = useState("idle"); // idle | checking | valid | invalid | offline
+
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -414,8 +437,47 @@ export default function CheckInScanner() {
     "x-admin-key": adminKey,
   });
 
+  // Validate the key the same way the Guest QR Codes page does — a debounced
+  // check against the guest list, saved to this page's own storage slot.
+  useEffect(() => {
+    const key = adminKey.trim();
+    if (!key) {
+      setKeyStatus("idle");
+      return;
+    }
+
+    let cancelled = false;
+    setKeyStatus("checking");
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/guests`, {
+          headers: { "x-admin-key": key },
+        });
+        if (cancelled) return;
+        if (res.status === 401) {
+          setKeyStatus("invalid");
+        } else if (!res.ok) {
+          setKeyStatus("offline");
+        } else {
+          localStorage.setItem(CHECKIN_ADMIN_KEY_STORAGE, key);
+          setKeyStatus("valid");
+        }
+      } catch {
+        if (!cancelled) setKeyStatus("offline");
+      }
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [adminKey]);
+
+  const canUse = keyStatus === "valid";
+
   const fetchGuests = useCallback(async () => {
-    if (!adminKey) {
+    if (!canUse) {
       setGuestsLoading(false);
       return;
     }
@@ -431,7 +493,7 @@ export default function CheckInScanner() {
       setGuestsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminKey]);
+  }, [canUse, adminKey]);
 
   useEffect(() => {
     fetchGuests();
@@ -440,10 +502,10 @@ export default function CheckInScanner() {
   // Quiet polling so this table stays in sync with check-ins happening on
   // the scanner page (or another admin's tab) without needing a websocket.
   useEffect(() => {
-    if (!adminKey) return;
+    if (!canUse) return;
     const id = setInterval(fetchGuests, 6000);
     return () => clearInterval(id);
-  }, [adminKey, fetchGuests]);
+  }, [canUse, fetchGuests]);
 
   const handleMarkArrived = async (id) => {
     const guest = guests.find((g) => g._id === id);
@@ -549,20 +611,68 @@ export default function CheckInScanner() {
     startScanner();
   };
 
-  if (!adminKey) {
+  const keyStatusLabel = {
+    idle: null,
+    checking: <span style={{ color: T.sub }}>Checking…</span>,
+    valid: <span style={{ color: T.good }}>✓ Saved — you'll stay signed in</span>,
+    invalid: <span style={{ color: T.bad }}>Incorrect key</span>,
+    offline: <span style={{ color: T.bad }}>Couldn't reach the server</span>,
+  }[keyStatus];
+
+  if (!canUse) {
     return (
       <Shell>
         <div
           style={{
             background: T.card,
             borderRadius: T.radius,
-            padding: 24,
-            textAlign: "center",
-            color: T.sub,
-            fontSize: 14,
+            padding: 22,
+            boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
           }}
         >
-          No admin key found. Open the <strong>Guest QR Codes</strong> page first, enter your key, then come back.
+          <label style={{ fontSize: 12, color: T.sub, display: "block", marginBottom: 8, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>
+            Admin key
+          </label>
+          <div style={{ position: "relative" }}>
+            <input
+              type={showKey ? "text" : "password"}
+              value={adminKey}
+              onChange={(e) => setAdminKey(e.target.value)}
+              placeholder="Paste your ADMIN_KEY"
+              style={{
+                width: "100%",
+                padding: "12px 42px 12px 14px",
+                borderRadius: 999,
+                border: "none",
+                background: T.soft,
+                fontSize: 14,
+                color: T.ink,
+                boxSizing: "border-box",
+                outline: "none",
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowKey((v) => !v)}
+              aria-label={showKey ? "Hide key" : "Show key"}
+              style={{
+                position: "absolute",
+                right: 12,
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: 2,
+                display: "flex",
+              }}
+            >
+              <EyeIcon off={showKey} />
+            </button>
+          </div>
+          {keyStatusLabel && (
+            <p style={{ fontSize: 12, marginTop: 10, marginBottom: 0 }}>{keyStatusLabel}</p>
+          )}
         </div>
       </Shell>
     );
