@@ -608,26 +608,53 @@ function GuestUploadSection() {
         feast — that our saga may be told in full.
       </p>
 
-      {/* Preview image — shrunk down (was maxWidth: 220) so it reads as a
-          small thumbnail preview rather than competing with the button below. */}
-      <div
-        className="mx-auto mt-8 overflow-hidden"
-        style={{
-          maxWidth: 140,
-          borderRadius: 8,
-          border: "1px solid #7a5a2c",
-          background: "#1c1a15",
-        }}
+      {/* Preview — a photograph pinned to parchment, sealed like a
+          dispatch from the archive rather than a plain thumbnail box. */}
+      <motion.div
+        initial={{ opacity: 0, y: 24, rotate: -6 }}
+        whileInView={{ opacity: 1, y: 0, rotate: -3 }}
+        viewport={{ once: true, amount: 0.4 }}
+        whileHover={{ rotate: 0, scale: 1.03 }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        className="relative mx-auto mt-10"
+        style={{ width: 168 }}
       >
-        <img
-          src={guestUploadPreview}
-          alt="Preview of the guest photo upload page"
-          className="block w-full"
-          onError={(e) => { e.currentTarget.style.display = "none"; }}
-        />
-      </div>
+        {/* parchment card behind the photo, like a mat */}
+        <div
+          className="wi-ancient wi-ancient-stains wi-ancient-fiber wi-burnt-edge relative p-2 pb-5"
+          style={{
+            border: "1px solid #7a5a2c",
+            boxShadow: "0 14px 34px rgba(30,15,5,0.35)",
+          }}
+        >
+          <div
+            className="overflow-hidden"
+            style={{ border: "1px solid rgba(30,15,5,0.5)" }}
+          >
+            <img
+              src={guestUploadPreview}
+              alt="Preview of the guest photo upload page"
+              className="block w-full"
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+            />
+          </div>
+        </div>
 
-      <div className="mt-8 flex justify-center">
+        {/* wax seal stamped over the corner, tying it back to the
+            invitation's opening seal */}
+        <motion.div
+          initial={{ scale: 0, rotate: 0 }}
+          whileInView={{ scale: 1, rotate: 18 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.4, type: "spring", stiffness: 200, damping: 14 }}
+          className="absolute"
+          style={{ top: -14, right: -14, width: 44, height: 44 }}
+        >
+          <WaxDisc />
+        </motion.div>
+      </motion.div>
+
+      <div className="mt-10 flex justify-center">
         <a
           href={GUEST_UPLOAD_URL}
           target="_blank"
