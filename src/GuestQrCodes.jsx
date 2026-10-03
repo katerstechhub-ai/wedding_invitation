@@ -5,6 +5,41 @@ const SITE_URL = "https://wedding-invitation-taupe-seven-44.vercel.app";
 const API_BASE =
   import.meta.env.VITE_GUEST_API_URL || "https://wedding-guest-backend-b9g8.onrender.com/api";
 const ADMIN_KEY_STORAGE = "mediahub_wedding_admin_key";
+const GROUPS_STORAGE = "mediahub_wedding_guest_groups";
+
+// Personal invitation link for one guest (same link the QR code points to).
+const guestLink = (g) => `${SITE_URL}/?token=${encodeURIComponent(g.token)}`;
+
+// Text to paste into a WhatsApp group: one guest per line.
+//   names only      ->  "1. John Doe"
+//   names + links   ->  "1. John Doe: https://…/?token=…"
+function formatGuestList(list, withLinks) {
+  return list
+    .map((g, i) => `${i + 1}. ${g.name}${withLinks ? `: ${guestLink(g)}` : ""}`)
+    .join("\n");
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Fallback for browsers/contexts where the clipboard API is blocked
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
 
 // ── Design tokens ───────────────────────────────────────────
 const T = {
@@ -529,7 +564,7 @@ function QrModal({ guest, onClose }) {
 }
 
 // ── Guest table ─────────────────────────────────────────────
-function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage, busyId, emptyMessage }) {
+function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage, busyId, emptyMessage, selected, onToggleSelect, onToggleAll, groupsMap }) {
   const [pendingDelete, setPendingDelete] = useState(null); // guest pending delete confirmation
 
   if (guests.length === 0)
@@ -541,6 +576,7 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
 
   const arrivedCount = guests.filter((g) => g.arrived).length;
   const pct = Math.round((arrivedCount / guests.length) * 100);
+  const allSelected = guests.every((g) => selected.has(g._id));
 
   return (
     <div style={{ marginTop: 20 }}>
@@ -578,6 +614,15 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
         <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 14 }}>
           <thead>
             <tr style={{ textAlign: "left", color: T.sub, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.6 }}>
+              <th style={{ padding: "10px 12px", fontWeight: 600, width: 36 }}>
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={() => onToggleAll(guests)}
+                  aria-label="Select all shown guests"
+                  style={{ width: 18, height: 18, cursor: "pointer", accentColor: T.accent, verticalAlign: "middle" }}
+                />
+              </th>
               <th style={{ padding: "10px 12px", fontWeight: 600 }}>#</th>
               <th style={{ padding: "10px 12px", fontWeight: 600 }}>Guest</th>
               <th style={{ padding: "10px 12px", fontWeight: 600 }}>Type</th>
@@ -597,8 +642,24 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
                   opacity: busyId === g._id ? 0.5 : 1,
                 }}
               >
-                <td style={{ padding: "12px", color: T.sub, borderRadius: "12px 0 0 12px" }}>{i + 1}</td>
-                <td style={{ padding: "12px", color: T.ink, fontWeight: 600 }}>{g.name}</td>
+                <td style={{ padding: "12px", borderRadius: "12px 0 0 12px" }}>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(g._id)}
+                    onChange={() => onToggleSelect(g._id)}
+                    aria-label={`Select ${g.name}`}
+                    style={{ width: 18, height: 18, cursor: "pointer", accentColor: T.accent, verticalAlign: "middle" }}
+                  />
+                </td>
+                <td style={{ padding: "12px", color: T.sub }}>{i + 1}</td>
+                <td style={{ padding: "12px", color: T.ink, fontWeight: 600 }}>
+                  {g.name}
+                  {groupsMap[g._id] && (
+                    <span style={{ display: "block", marginTop: 2, fontSize: 11, fontWeight: 500, color: T.sub }}>
+                      {groupsMap[g._id]}
+                    </span>
+                  )}
+                </td>
                 <td style={{ padding: "12px" }}>
                   <Pill tone={guestTypeTone(g.guestType)}>{guestTypeLabel(g.guestType)}</Pill>
                 </td>
@@ -660,7 +721,7 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
               </tr>
             ))}
             {/* row spacer */}
-            <tr><td colSpan={8} style={{ height: 6 }} /></tr>
+            <tr><td colSpan={9} style={{ height: 6 }} /></tr>
           </tbody>
         </table>
       </div>
@@ -701,6 +762,28 @@ export default function GuestQrCodes() {
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
   const [pendingSignOut, setPendingSignOut] = useState(false);
+
+  // Groups: an optional label given when guests are bulk-added (e.g. the name
+  // of their WhatsApp group). Stored in this browser only, keyed by guest id.
+  const [groupLabel, setGroupLabel] = useState("");
+  const [groupsMap, setGroupsMap] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(GROUPS_STORAGE) || "{}");
+    } catch {
+      return {};
+    }
+  });
+  const [activeGroup, setActiveGroup] = useState("");
+  const [selected, setSelected] = useState(() => new Set());
+  const [copied, setCopied] = useState(""); // "" | "names" | "links" | "error"
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(GROUPS_STORAGE, JSON.stringify(groupsMap));
+    } catch {
+      /* storage unavailable */
+    }
+  }, [groupsMap]);
 
   const authHeaders = (key = adminKey) => ({
     "Content-Type": "application/json",
@@ -765,8 +848,10 @@ export default function GuestQrCodes() {
       if (!res.ok) throw new Error("Failed to load guest list");
       const data = await res.json();
       setGuests(data);
+      return data;
     } catch (err) {
       setError(err.message);
+      return null;
     }
   };
 
@@ -781,8 +866,9 @@ export default function GuestQrCodes() {
 
   // `type` defaults to whatever's currently selected in the toggle, so both
   // the quick-add form and the bulk-add box use the same selection.
-  const addNames = async (names, type = guestType) => {
+  const addNames = async (names, type = guestType, label = "") => {
     if (names.length === 0) return;
+    const before = new Set(guests.map((g) => g._id));
     try {
       setError("");
       const res = await fetch(`${API_BASE}/guests/bulk`, {
@@ -794,7 +880,22 @@ export default function GuestQrCodes() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message || "Failed to add guests");
       }
-      await fetchGuests();
+      const data = await fetchGuests();
+
+      // Tag the freshly added guests with the group name, select them and
+      // show just that group, so one tap on "Copy" gives the whole batch.
+      if (label && data) {
+        const added = data.filter((g) => !before.has(g._id));
+        if (added.length) {
+          setGroupsMap((prev) => {
+            const next = { ...prev };
+            added.forEach((g) => (next[g._id] = label));
+            return next;
+          });
+          setSelected(new Set(added.map((g) => g._id)));
+          setActiveGroup(label);
+        }
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -810,8 +911,9 @@ export default function GuestQrCodes() {
 
   const handleBulkGenerate = async () => {
     const names = bulkText.split("\n").map((n) => n.trim()).filter(Boolean);
-    await addNames(names);
+    await addNames(names, guestType, groupLabel.trim());
     setBulkText("");
+    setGroupLabel("");
   };
 
   const handleToggleArrived = async (id) => {
@@ -848,6 +950,11 @@ export default function GuestQrCodes() {
         throw new Error(body.message || "Failed to delete guest");
       }
       setGuests((prev) => prev.filter((g) => g._id !== id));
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -876,9 +983,53 @@ export default function GuestQrCodes() {
 
   const canUse = keyStatus === "valid";
 
-  const filteredGuests = tableSearch.trim()
-    ? guests.filter((g) => g.name.toLowerCase().includes(tableSearch.trim().toLowerCase()))
-    : guests;
+  const filteredGuests = guests.filter(
+    (g) =>
+      (!activeGroup || groupsMap[g._id] === activeGroup) &&
+      (!tableSearch.trim() || g.name.toLowerCase().includes(tableSearch.trim().toLowerCase()))
+  );
+
+  const groupCounts = {};
+  guests.forEach((g) => {
+    const l = groupsMap[g._id];
+    if (l) groupCounts[l] = (groupCounts[l] || 0) + 1;
+  });
+  const groupNames = Object.keys(groupCounts);
+
+  // Guests to copy = the ticked ones, in the order they appear in the list
+  const selectedGuests = guests.filter((g) => selected.has(g._id));
+
+  const handleToggleSelect = (id) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const handleToggleAll = (shown) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const everyShown = shown.every((g) => next.has(g._id));
+      shown.forEach((g) => (everyShown ? next.delete(g._id) : next.add(g._id)));
+      return next;
+    });
+
+  // Tapping a group chip shows that group and ticks all its guests.
+  const handlePickGroup = (label) => {
+    if (!label || label === activeGroup) {
+      setActiveGroup("");
+      setSelected(new Set());
+      return;
+    }
+    setActiveGroup(label);
+    setSelected(new Set(guests.filter((g) => groupsMap[g._id] === label).map((g) => g._id)));
+  };
+
+  const handleCopy = async (kind) => {
+    const ok = await copyText(formatGuestList(selectedGuests, kind === "links"));
+    setCopied(ok ? kind : "error");
+    setTimeout(() => setCopied(""), 1800);
+  };
 
   return (
     <div style={{ background: T.bg, minHeight: "100vh", fontFamily: T.font, padding: "28px 16px" }}>
@@ -1101,6 +1252,24 @@ export default function GuestQrCodes() {
 
           {bulkOpen && (
             <div style={{ marginTop: 10 }}>
+              <input
+                type="text"
+                value={groupLabel}
+                onChange={(e) => setGroupLabel(e.target.value)}
+                placeholder="Group name (optional) — e.g. Ukum Family WhatsApp"
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  borderRadius: 999,
+                  border: "none",
+                  background: T.soft,
+                  fontSize: 14,
+                  color: T.ink,
+                  boxSizing: "border-box",
+                  outline: "none",
+                  marginBottom: 10,
+                }}
+              />
               <textarea
                 value={bulkText}
                 onChange={(e) => setBulkText(e.target.value)}
@@ -1178,7 +1347,42 @@ export default function GuestQrCodes() {
                   />
                 </div>
               )}
+              {groupNames.length > 0 && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14, alignItems: "center" }}>
+                  <span style={{ fontSize: 11, color: T.sub, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>
+                    Groups
+                  </span>
+                  {[{ label: "", text: "All" }, ...groupNames.map((l) => ({ label: l, text: `${l} · ${groupCounts[l]}` }))].map(
+                    (c) => {
+                      const on = activeGroup === c.label;
+                      return (
+                        <button
+                          key={c.label || "all"}
+                          type="button"
+                          onClick={() => handlePickGroup(c.label)}
+                          style={{
+                            padding: "6px 14px",
+                            borderRadius: 999,
+                            border: "none",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            background: on ? T.dark : T.soft,
+                            color: on ? "#fff" : T.sub,
+                          }}
+                        >
+                          {c.text}
+                        </button>
+                      );
+                    }
+                  )}
+                </div>
+              )}
               <GuestTable
+                selected={selected}
+                onToggleSelect={handleToggleSelect}
+                onToggleAll={handleToggleAll}
+                groupsMap={groupsMap}
                 guests={filteredGuests}
                 onToggleArrived={handleToggleArrived}
                 onDelete={handleDelete}
@@ -1195,6 +1399,91 @@ export default function GuestQrCodes() {
           )}
         </Card>
       </div>
+
+      {selectedGuests.length > 0 && (
+        <div
+          style={{
+            position: "fixed",
+            left: "50%",
+            bottom: 20,
+            transform: "translateX(-50%)",
+            zIndex: 900,
+            maxWidth: "calc(100% - 24px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            flexWrap: "wrap",
+            padding: "10px 12px 10px 18px",
+            borderRadius: 28,
+            background: T.dark,
+            boxShadow: "0 18px 40px rgba(0,0,0,0.28)",
+          }}
+        >
+          <span style={{ color: "#fff", fontSize: 13, fontWeight: 600, marginRight: 4 }}>
+            {selectedGuests.length} selected
+          </span>
+          <button
+            onClick={() => handleCopy("names")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "9px 16px",
+              borderRadius: 999,
+              border: "none",
+              background: copied === "names" ? T.goodBg : "rgba(255,255,255,0.14)",
+              color: copied === "names" ? T.good : "#fff",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {copied === "names" ? <CheckIcon /> : <CopyIcon />}
+            {copied === "names" ? "Copied!" : "Copy names"}
+          </button>
+          <button
+            onClick={() => handleCopy("links")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "9px 16px",
+              borderRadius: 999,
+              border: "none",
+              background: copied === "links" ? T.goodBg : T.accent,
+              color: copied === "links" ? T.good : T.accentInk,
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            {copied === "links" ? <CheckIcon /> : <CopyIcon />}
+            {copied === "links" ? "Copied!" : "Copy names + links"}
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            aria-label="Clear selection"
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 999,
+              border: "none",
+              background: "transparent",
+              color: "#c9c9c9",
+              fontSize: 16,
+              cursor: "pointer",
+            }}
+          >
+            ×
+          </button>
+          {copied === "error" && (
+            <span style={{ color: "#f6dede", fontSize: 12, width: "100%", textAlign: "center" }}>
+              Couldn't copy — your browser blocked it
+            </span>
+          )}
+        </div>
+      )}
 
       {modalGuest && <QrModal guest={modalGuest} onClose={() => setModalGuest(null)} />}
       {modalMessage && <MessageModal guest={modalMessage} onClose={() => setModalMessage(null)} />}

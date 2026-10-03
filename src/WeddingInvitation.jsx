@@ -26,6 +26,7 @@ const COUPLE = {
   groom: {
     nickname: "Bizzer",        // 
     fullName: "Kenneth Tesem Gbugho",         // 
+    origin: ["of Tyuluv Ward,", "Ukum LGA,", "Benue State."],
     parents: ["Mr. Gbugho Amokaha Donald", "Mrs. Gbugho Juliana"],    // 
     instagram: "https://www.instagram.com/bizzare_ix?igsh=OW1pN2ExM2NqeXc2&igsi=OW1pN2ExM2NqeXc2",
     photo: bizzerPhoto,
@@ -33,6 +34,7 @@ const COUPLE = {
   bride: {
     nickname: "Paloma",
     fullName: "Ruth Enuwa Ameh",
+    origin: ["of Ade-Igwu – Orokam,", "Ogbadibo LGA,", "Benue State."],
     parents: ["Mr. Augustine Ogbe Ameh", "Mrs. Agatha Ichame Ameh"],
     instagram: "https://www.instagram.com/ruruu_fundz?igsh=MWVmZjRwdTM5a3I4cg==&igsi=MWVmZjRwdTM5a3I4cg==",
     photo: pamsPhoto,
@@ -1200,6 +1202,17 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
               </p>
               <p className="mt-1 text-sm italic" style={{ color: "#3a2a17" }}>{p.parents[0]}</p>
               <p className="text-sm italic" style={{ color: "#3a2a17" }}>& {p.parents[1]}</p>
+              {/* where the family is from, as written on the invitation card */}
+              {p.origin && (
+                <>
+                  <div className="wi-goldline mx-auto mt-3 h-px w-16" />
+                  <div className="mt-3">
+                    {p.origin.map((line) => (
+                      <p key={line} className="text-xs italic leading-relaxed" style={{ color: "#7a5a2c" }}>{line}</p>
+                    ))}
+                  </div>
+                </>
+              )}
               <motion.a whileHover={{ scale: 1.1, rotate: 6 }} whileTap={{ scale: 0.95 }}
                 href={p.instagram} target="_blank" rel="noreferrer"
                 className="mx-auto mt-5 flex h-10 w-10 items-center justify-center rounded-full"
