@@ -7,15 +7,6 @@ const API_BASE =
 // own admin key, entered and validated independently.
 const CHECKIN_ADMIN_KEY_STORAGE = "mediahub_checkin_admin_key";
 
-// Survives remounts: whatever is typed is kept here, outside React state.
-let draftAdminKey = (() => {
-  try {
-    return localStorage.getItem(CHECKIN_ADMIN_KEY_STORAGE) || "";
-  } catch {
-    return "";
-  }
-})();
-
 const T = {
   bg: "#efeae0",
   card: "#ffffff",
@@ -400,32 +391,11 @@ function ManualCheckIn({ guests, onMarkArrived, busyId }) {
   );
 }
 
-// Card shell — kept at module scope (not defined inside CheckInScanner) so
-// its component identity stays stable across re-renders.
-function Shell({ children }) {
-  return (
-    <div style={{ background: T.bg, minHeight: "100vh", fontFamily: T.font, padding: "28px 16px" }}>
-      <div style={{ maxWidth: 520, margin: "0 auto" }}>
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ color: T.ink, margin: 0, fontSize: 26, fontWeight: 700 }}>Entrance Check-In</h1>
-          <p style={{ color: T.sub, fontSize: 14, margin: "4px 0 0" }}>
-            Scan a guest's QR to mark them as arrived.
-          </p>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 export default function CheckInScanner() {
-  // Initial value comes from module-level draft, so a remount keeps what
-  // was already typed.
-  const [adminKey, setAdminKeyState] = useState(() => draftAdminKey);
-  const setAdminKey = (v) => {
-    draftAdminKey = v;
-    setAdminKeyState(v);
-  };
+  // Own admin key for this page — separate from the Guest QR Codes page's key.
+  const [adminKey, setAdminKey] = useState(
+    () => localStorage.getItem(CHECKIN_ADMIN_KEY_STORAGE) || ""
+  );
   const [showKey, setShowKey] = useState(false);
   const [keyStatus, setKeyStatus] = useState("idle"); // idle | checking | valid | invalid | offline
 
@@ -439,21 +409,6 @@ export default function CheckInScanner() {
   const [guestsLoading, setGuestsLoading] = useState(true);
   const [guestsError, setGuestsError] = useState("");
   const [busyId, setBusyId] = useState(null);
-
-  // Stable callback ref: on (re)mount, focus the key input and put the
-  // caret at the end so typing continues uninterrupted.
-  const keyInputRef = useCallback((el) => {
-    if (!el) return;
-    setTimeout(() => {
-      el.focus();
-      const n = el.value.length;
-      try {
-        el.setSelectionRange(n, n);
-      } catch {
-        /* ignore */
-      }
-    }, 0);
-  }, []);
 
   const authHeaders = () => ({
     "Content-Type": "application/json",
@@ -641,14 +596,32 @@ export default function CheckInScanner() {
     offline: <span style={{ color: T.bad }}>Couldn't reach the server</span>,
   }[keyStatus];
 
-  if (!canUse) {
-    return (
-      <Shell>
+  const resultTone = result?.error
+    ? { bg: T.badBg, fg: T.bad }
+    : result?.alreadyCheckedIn
+    ? { bg: T.warnBg, fg: T.warn }
+    : { bg: T.goodBg, fg: T.good };
+
+  // Single return, same structure as the Guest QR Codes page: the admin key
+  // card is always rendered in the same place; only the content below it is
+  // gated on canUse.
+  return (
+    <div style={{ background: T.bg, minHeight: "100vh", fontFamily: T.font, padding: "28px 16px" }}>
+      <div style={{ maxWidth: 520, margin: "0 auto" }}>
+        <div style={{ marginBottom: 20 }}>
+          <h1 style={{ color: T.ink, margin: 0, fontSize: 26, fontWeight: 700 }}>Entrance Check-In</h1>
+          <p style={{ color: T.sub, fontSize: 14, margin: "4px 0 0" }}>
+            Scan a guest's QR to mark them as arrived.
+          </p>
+        </div>
+
+        {/* Admin key card */}
         <div
           style={{
             background: T.card,
             borderRadius: T.radius,
             padding: 22,
+            marginBottom: 16,
             boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
           }}
         >
@@ -657,13 +630,10 @@ export default function CheckInScanner() {
           </label>
           <div style={{ position: "relative" }}>
             <input
-              ref={keyInputRef}
-              autoFocus
               type={showKey ? "text" : "password"}
               value={adminKey}
               onChange={(e) => setAdminKey(e.target.value)}
               placeholder="Paste your ADMIN_KEY"
-              autoComplete="off"
               style={{
                 width: "100%",
                 padding: "12px 42px 12px 14px",
@@ -699,195 +669,189 @@ export default function CheckInScanner() {
             <p style={{ fontSize: 12, marginTop: 10, marginBottom: 0 }}>{keyStatusLabel}</p>
           )}
         </div>
-      </Shell>
-    );
-  }
 
-  const resultTone = result?.error
-    ? { bg: T.badBg, fg: T.bad }
-    : result?.alreadyCheckedIn
-    ? { bg: T.warnBg, fg: T.warn }
-    : { bg: T.goodBg, fg: T.good };
-
-  return (
-    <Shell>
-      <div
-        style={{
-          background: T.card,
-          borderRadius: T.radius,
-          padding: 22,
-          boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-        }}
-      >
-        {!scanning && !result && (
-          <div style={{ textAlign: "center", padding: "10px 0 4px" }}>
+        {canUse && (
+          <>
             <div
               style={{
-                width: 92,
-                height: 92,
-                margin: "10px auto 18px",
-                borderRadius: "50%",
-                background: T.accent,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 42,
-              }}
-              aria-hidden
-            >
-              📷
-            </div>
-            <p style={{ margin: 0, color: T.sub, fontSize: 14 }}>
-              Point your camera at the guest's QR code.
-            </p>
-            <button
-              onClick={startScanner}
-              style={{
-                marginTop: 18,
-                width: "100%",
-                padding: "14px 0",
-                borderRadius: 999,
-                border: "none",
-                background: T.dark,
-                color: "#fff",
-                fontSize: 15,
-                fontWeight: 600,
-                cursor: "pointer",
+                background: T.card,
+                borderRadius: T.radius,
+                padding: 22,
+                boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
               }}
             >
-              Start Scanning
-            </button>
-          </div>
-        )}
+              {!scanning && !result && (
+                <div style={{ textAlign: "center", padding: "10px 0 4px" }}>
+                  <div
+                    style={{
+                      width: 92,
+                      height: 92,
+                      margin: "10px auto 18px",
+                      borderRadius: "50%",
+                      background: T.accent,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 42,
+                    }}
+                    aria-hidden
+                  >
+                    📷
+                  </div>
+                  <p style={{ margin: 0, color: T.sub, fontSize: 14 }}>
+                    Point your camera at the guest's QR code.
+                  </p>
+                  <button
+                    onClick={startScanner}
+                    style={{
+                      marginTop: 18,
+                      width: "100%",
+                      padding: "14px 0",
+                      borderRadius: 999,
+                      border: "none",
+                      background: T.dark,
+                      color: "#fff",
+                      fontSize: 15,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Start Scanning
+                  </button>
+                </div>
+              )}
 
-        <div
-          id={containerId}
-          style={{
-            display: scanning ? "block" : "none",
-            borderRadius: 16,
-            overflow: "hidden",
-            background: T.soft,
-            minHeight: 240,
-          }}
-        />
+              <div
+                id={containerId}
+                style={{
+                  display: scanning ? "block" : "none",
+                  borderRadius: 16,
+                  overflow: "hidden",
+                  background: T.soft,
+                  minHeight: 240,
+                }}
+              />
 
-        {scanning && (
-          <button
-            onClick={stopScanner}
-            style={{
-              marginTop: 14,
-              width: "100%",
-              padding: "12px 0",
-              borderRadius: 999,
-              border: "none",
-              background: T.soft,
-              color: T.bad,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Cancel
-          </button>
-        )}
-
-        {result && (
-          <div
-            style={{
-              marginTop: 6,
-              padding: 22,
-              borderRadius: 18,
-              textAlign: "center",
-              background: resultTone.bg,
-            }}
-          >
-            {result.error ? (
-              <p style={{ fontSize: 17, fontWeight: 700, color: resultTone.fg, margin: 0 }}>
-                ✕ {result.error}
-              </p>
-            ) : (
-              <>
-                <div
+              {scanning && (
+                <button
+                  onClick={stopScanner}
                   style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: "50%",
-                    background: "#fff",
-                    color: resultTone.fg,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 28,
-                    fontWeight: 700,
-                    margin: "0 auto 10px",
+                    marginTop: 14,
+                    width: "100%",
+                    padding: "12px 0",
+                    borderRadius: 999,
+                    border: "none",
+                    background: T.soft,
+                    color: T.bad,
+                    fontWeight: 600,
+                    cursor: "pointer",
                   }}
                 >
-                  {result.alreadyCheckedIn ? "!" : "✓"}
+                  Cancel
+                </button>
+              )}
+
+              {result && (
+                <div
+                  style={{
+                    marginTop: 6,
+                    padding: 22,
+                    borderRadius: 18,
+                    textAlign: "center",
+                    background: resultTone.bg,
+                  }}
+                >
+                  {result.error ? (
+                    <p style={{ fontSize: 17, fontWeight: 700, color: resultTone.fg, margin: 0 }}>
+                      ✕ {result.error}
+                    </p>
+                  ) : (
+                    <>
+                      <div
+                        style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: "50%",
+                          background: "#fff",
+                          color: resultTone.fg,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 28,
+                          fontWeight: 700,
+                          margin: "0 auto 10px",
+                        }}
+                      >
+                        {result.alreadyCheckedIn ? "!" : "✓"}
+                      </div>
+                      <p style={{ fontSize: 15, fontWeight: 600, color: resultTone.fg, margin: 0 }}>
+                        {result.alreadyCheckedIn ? "Already checked in" : "Checked in"}
+                      </p>
+                      <p style={{ fontSize: 20, color: T.ink, marginTop: 10, marginBottom: 0, fontWeight: 700 }}>
+                        {result.name}
+                      </p>
+                      <p style={{ fontSize: 12, color: T.sub, textTransform: "capitalize", marginTop: 4 }}>
+                        RSVP: {result.attending || "none"}
+                      </p>
+                    </>
+                  )}
+
+                  <button
+                    onClick={scanNext}
+                    style={{
+                      marginTop: 18,
+                      padding: "12px 26px",
+                      borderRadius: 999,
+                      border: "none",
+                      background: T.accent,
+                      color: T.ink,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Scan next guest
+                  </button>
                 </div>
-                <p style={{ fontSize: 15, fontWeight: 600, color: resultTone.fg, margin: 0 }}>
-                  {result.alreadyCheckedIn ? "Already checked in" : "Checked in"}
-                </p>
-                <p style={{ fontSize: 20, color: T.ink, marginTop: 10, marginBottom: 0, fontWeight: 700 }}>
-                  {result.name}
-                </p>
-                <p style={{ fontSize: 12, color: T.sub, textTransform: "capitalize", marginTop: 4 }}>
-                  RSVP: {result.attending || "none"}
-                </p>
-              </>
+              )}
+            </div>
+
+            {!guestsLoading && (
+              <ManualCheckIn guests={guests} onMarkArrived={handleMarkArrived} busyId={busyId} />
             )}
 
-            <button
-              onClick={scanNext}
+            {guestsError && (
+              <div
+                style={{
+                  background: T.badBg,
+                  color: T.bad,
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  fontSize: 13,
+                  marginTop: 14,
+                }}
+              >
+                {guestsError}
+              </div>
+            )}
+
+            <div
               style={{
-                marginTop: 18,
-                padding: "12px 26px",
-                borderRadius: 999,
-                border: "none",
-                background: T.accent,
-                color: T.ink,
-                fontWeight: 600,
-                cursor: "pointer",
+                background: T.card,
+                borderRadius: T.radius,
+                padding: 22,
+                marginTop: 16,
+                boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
               }}
             >
-              Scan next guest
-            </button>
-          </div>
+              {guestsLoading ? (
+                <p style={{ color: T.sub, fontSize: 14 }}>Loading guest list…</p>
+              ) : (
+                <ArrivalsTable guests={guests} onMarkArrived={handleMarkArrived} busyId={busyId} />
+              )}
+            </div>
+          </>
         )}
       </div>
-
-      {!guestsLoading && (
-        <ManualCheckIn guests={guests} onMarkArrived={handleMarkArrived} busyId={busyId} />
-      )}
-
-      {guestsError && (
-        <div
-          style={{
-            background: T.badBg,
-            color: T.bad,
-            padding: "10px 14px",
-            borderRadius: 12,
-            fontSize: 13,
-            marginTop: 14,
-          }}
-        >
-          {guestsError}
-        </div>
-      )}
-
-      <div
-        style={{
-          background: T.card,
-          borderRadius: T.radius,
-          padding: 22,
-          marginTop: 16,
-          boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-        }}
-      >
-        {guestsLoading ? (
-          <p style={{ color: T.sub, fontSize: 14 }}>Loading guest list…</p>
-        ) : (
-          <ArrivalsTable guests={guests} onMarkArrived={handleMarkArrived} busyId={busyId} />
-        )}
-      </div>
-    </Shell>
+    </div>
   );
 }
