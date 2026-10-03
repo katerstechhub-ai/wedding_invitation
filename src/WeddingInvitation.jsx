@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { QRCodeCanvas } from "qrcode.react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import {
   FaInstagram, FaMapMarkerAlt, FaVolumeUp, FaVolumeMute, FaHeart,
@@ -76,6 +77,58 @@ const API_BASE =
   import.meta.env.VITE_GUEST_API_URL || "https://wedding-guest-backend-b9g8.onrender.com/api";
 
 const RSVP_DONE_KEY = "wi_rsvp_done_v1";
+
+// Must match SITE_URL in the admin QR page so the scanner reads the same link.
+const SITE_URL = "https://wedding-invitation-taupe-seven-44.vercel.app";
+
+// Shown only when the invitation is opened from a guest's personal link.
+// Same QR the admin page generates for that guest.
+function EntryPass({ token, name }) {
+  const wrapRef = useRef(null);
+  const url = `${SITE_URL}/?token=${encodeURIComponent(token)}`;
+
+  const save = () => {
+    const canvas = wrapRef.current && wrapRef.current.querySelector("canvas");
+    if (!canvas) return;
+    const a = document.createElement("a");
+    a.download = `entry-pass-${(name || "guest").replace(/\s+/g, "_")}.png`;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  };
+
+  return (
+    <section className="text-center">
+      <h3 className="font-serif text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.35em" }}>
+        Your Seal of Entry
+      </h3>
+      <p className="mt-2 font-black-letter text-3xl" style={{ color: "#7a1220" }}>
+        Entry Pass
+      </p>
+      <div
+        className="mx-auto mt-6 max-w-[260px] rounded-2xl p-5"
+        style={{ background: "#fbf4df", border: "1px solid #c9a24a", boxShadow: "0 10px 30px rgba(122,18,32,0.12)" }}
+      >
+        <div ref={wrapRef} className="flex justify-center">
+          <QRCodeCanvas value={url} size={190} bgColor="#fbf4df" fgColor="#1c1a15" />
+        </div>
+        {name && (
+          <p className="mt-4 font-serif text-sm font-bold" style={{ color: "#1c1a15" }}>{name}</p>
+        )}
+        <p className="mt-1 text-xs italic" style={{ color: "#7a5a2c" }}>
+          Show this at the entrance
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={save}
+        className="mt-4 rounded-full px-5 py-2 text-[10px] uppercase"
+        style={{ letterSpacing: "0.25em", border: "1px solid #7a1220", color: "#7a1220", background: "transparent" }}
+      >
+        Save QR
+      </button>
+    </section>
+  );
+}
 
 // ─────────────────────────────────────────────────────────
 // Global styles
@@ -1022,6 +1075,7 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
   const [activeNav, setActiveNav] = useState("home");
   const [guestName, setGuestName] = useState(guestNameProp);
   const [guestToken, setGuestToken] = useState("");
+  const [guestType, setGuestType] = useState("");
   const [rsvpDone, setRsvpDone] = useState(
     () => typeof window !== "undefined" && localStorage.getItem(RSVP_DONE_KEY) === "1"
   );
@@ -1048,7 +1102,10 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
       setGuestToken(token);
       fetch(`${API_BASE}/guests/by-token/${token}`)
         .then((res) => (res.ok ? res.json() : null))
-        .then((guest) => { if (guest?.name) setGuestName(guest.name); })
+        .then((guest) => {
+          if (guest?.name) setGuestName(guest.name);
+          if (guest?.guestType) setGuestType(guest.guestType);
+        })
         .catch(() => {});
     } else if (g) {
       setGuestName(decodeURIComponent(g));
@@ -1366,6 +1423,14 @@ export default function WeddingInvitation({ guestName: guestNameProp = "" }) {
             <WishesForm token={guestToken} prefillName={guestName} onSubmitted={handleRsvpSubmitted} />
           </div>
         </section>
+
+        {/* ENTRY PASS — only for guests with a personal link (not physical-card guests) */}
+        {guestToken && guestType !== "physical" && (
+          <>
+            <SectionDivider symbol="✦" />
+            <EntryPass token={guestToken} name={guestName} />
+          </>
+        )}
 
         <SectionDivider symbol="✦" />
 
