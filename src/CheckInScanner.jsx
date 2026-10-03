@@ -7,6 +7,15 @@ const API_BASE =
 // own admin key, entered and validated independently.
 const CHECKIN_ADMIN_KEY_STORAGE = "mediahub_checkin_admin_key";
 
+// Survives remounts: whatever is typed is kept here, outside React state.
+let draftAdminKey = (() => {
+  try {
+    return localStorage.getItem(CHECKIN_ADMIN_KEY_STORAGE) || "";
+  } catch {
+    return "";
+  }
+})();
+
 const T = {
   bg: "#efeae0",
   card: "#ffffff",
@@ -392,11 +401,7 @@ function ManualCheckIn({ guests, onMarkArrived, busyId }) {
 }
 
 // Card shell — kept at module scope (not defined inside CheckInScanner) so
-// its component identity stays stable across re-renders. Defining it inside
-// the component would recreate the function every render, which makes React
-// unmount and remount the whole subtree below it (including ManualCheckIn)
-// on every re-render — wiping out the search box's local state every time
-// the guest list polls.
+// its component identity stays stable across re-renders.
 function Shell({ children }) {
   return (
     <div style={{ background: T.bg, minHeight: "100vh", fontFamily: T.font, padding: "28px 16px" }}>
@@ -414,10 +419,13 @@ function Shell({ children }) {
 }
 
 export default function CheckInScanner() {
-  // Own admin key for this page — separate from the Guest QR Codes page's key.
-  const [adminKey, setAdminKey] = useState(
-    () => localStorage.getItem(CHECKIN_ADMIN_KEY_STORAGE) || ""
-  );
+  // Initial value comes from module-level draft, so a remount keeps what
+  // was already typed.
+  const [adminKey, setAdminKeyState] = useState(() => draftAdminKey);
+  const setAdminKey = (v) => {
+    draftAdminKey = v;
+    setAdminKeyState(v);
+  };
   const [showKey, setShowKey] = useState(false);
   const [keyStatus, setKeyStatus] = useState("idle"); // idle | checking | valid | invalid | offline
 
@@ -432,9 +440,24 @@ export default function CheckInScanner() {
   const [guestsError, setGuestsError] = useState("");
   const [busyId, setBusyId] = useState(null);
 
+  // Stable callback ref: on (re)mount, focus the key input and put the
+  // caret at the end so typing continues uninterrupted.
+  const keyInputRef = useCallback((el) => {
+    if (!el) return;
+    setTimeout(() => {
+      el.focus();
+      const n = el.value.length;
+      try {
+        el.setSelectionRange(n, n);
+      } catch {
+        /* ignore */
+      }
+    }, 0);
+  }, []);
+
   const authHeaders = () => ({
     "Content-Type": "application/json",
-    "x-admin-key": adminKey,
+    "x-admin-key": adminKey.trim(),
   });
 
   // Validate the key the same way the Guest QR Codes page does — a debounced
@@ -556,7 +579,7 @@ export default function CheckInScanner() {
       try {
         const res = await fetch(`${API_BASE}/guests/checkin/${token}`, {
           method: "PATCH",
-          headers: { "x-admin-key": adminKey },
+          headers: { "x-admin-key": adminKey.trim() },
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -579,13 +602,12 @@ export default function CheckInScanner() {
     [busy, adminKey, stopScanner, fetchGuests]
   );
 
-  // ─── FIX: startScanner with a small delay ───
   const startScanner = async () => {
     setResult(null);
     setScanning(true);
 
     // Wait a tick so the DOM renders the container
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 100));
 
     const qr = new Html5Qrcode(containerId);
     scannerRef.current = qr;
@@ -635,10 +657,13 @@ export default function CheckInScanner() {
           </label>
           <div style={{ position: "relative" }}>
             <input
+              ref={keyInputRef}
+              autoFocus
               type={showKey ? "text" : "password"}
               value={adminKey}
               onChange={(e) => setAdminKey(e.target.value)}
               placeholder="Paste your ADMIN_KEY"
+              autoComplete="off"
               style={{
                 width: "100%",
                 padding: "12px 42px 12px 14px",
@@ -735,7 +760,6 @@ export default function CheckInScanner() {
           </div>
         )}
 
-        {/* ─── Scanner container with minHeight ─── */}
         <div
           id={containerId}
           style={{
@@ -743,7 +767,7 @@ export default function CheckInScanner() {
             borderRadius: 16,
             overflow: "hidden",
             background: T.soft,
-            minHeight: 240, // 👈 ensures the scanner has space
+            minHeight: 240,
           }}
         />
 
