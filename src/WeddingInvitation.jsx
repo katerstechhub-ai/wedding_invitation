@@ -30,7 +30,7 @@ import groomSuite from "./assets/groom_suite-clean.jpg";
 // DATA
 // ─────────────────────────────────────────────────────────
 const COUPLE = {
-  hashtag: "#PALOMABIZZERWEDDING",
+  hashtag: "#TElovestory2026",
   groom: {
     nickname: "Bizzer",
     fullName: "Kenneth Tesem Gbugho",
