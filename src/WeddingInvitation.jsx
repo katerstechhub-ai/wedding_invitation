@@ -7,30 +7,35 @@ import {
   FaCamera, FaScroll, FaHandPointer,
 } from "react-icons/fa";
 
-import pamsPhoto from "./assets/pams-solo.jpeg";
-import bizzerPhoto from "./assets/bizzer-solo.jpeg";
-import heroPhoto from "./assets/hero.jpeg";
-import galleryPhoto1 from "./assets/gallery-1.jpeg";
-import galleryPhoto2 from "./assets/gallery-2.jpeg";
-import galleryPhoto3 from "./assets/gallery-3.jpeg";
-import galleryPhoto4 from "./assets/gallery-4.jpeg";
-import galleryPhoto5 from "./assets/gallery-5.jpeg";
 import SEAL_URL from "./assets/stark-seal.png";
-import guestUploadPreview from "./assets/guest-upload-preview.jpeg";
 import dresscodeImage from "./assets/dresscode.jpeg";
+
+// Photos — imported by their exact file names in src/assets.
+import couple1 from "./assets/couple1.jpg";
+import couple2 from "./assets/couple2.jpg";
+import couple3 from "./assets/couple3.jpg";
+import couple4 from "./assets/couple4.jpg";
+import couple5 from "./assets/couple5.jpg";
+import couple6 from "./assets/couple6.jpg";
+import bride1 from "./assets/bride1.jpg";
+import bride2 from "./assets/bride2.jpg";
+import bride3 from "./assets/bride3.jpg";
+import groom1 from "./assets/groom1.jpg";
+import groom2 from "./assets/groom2.jpg";
+import groom3 from "./assets/groom3.jpg";
 
 // ─────────────────────────────────────────────────────────
 // DATA
 // ─────────────────────────────────────────────────────────
 const COUPLE = {
-  hashtag: "#PALOMABIZZERWEDDING", // 
+  hashtag: "#PALOMABIZZERWEDDING",
   groom: {
-    nickname: "Bizzer",        // 
-    fullName: "Kenneth Tesem Gbugho",         // 
+    nickname: "Bizzer",
+    fullName: "Kenneth Tesem Gbugho",
     origin: ["of Tyuluv Ward,", "Ukum LGA,", "Benue State."],
-    parents: ["Mr. Gbugho Amokaha Donald", "Mrs. Gbugho Juliana"],    // 
+    parents: ["Mr. Gbugho Amokaha Donald", "Mrs. Gbugho Juliana"],
     instagram: "https://www.instagram.com/bizzare_ix?igsh=OW1pN2ExM2NqeXc2&igsi=OW1pN2ExM2NqeXc2",
-    photo: bizzerPhoto,
+    photo: groom3,
   },
   bride: {
     nickname: "Paloma",
@@ -38,7 +43,7 @@ const COUPLE = {
     origin: ["of Ade-Igwu – Orokam,", "Ogbadibo LGA,", "Benue State."],
     parents: ["Mr. Augustine Ogbe Ameh", "Mrs. Agatha Ichame Ameh"],
     instagram: "https://www.instagram.com/ruruu_fundz?igsh=MWVmZjRwdTM5a3I4cg==&igsi=MWVmZjRwdTM5a3I4cg==",
-    photo: pamsPhoto,
+    photo: bride2,
   },
 };
 
@@ -56,17 +61,23 @@ const EVENT = {
   weddingDateTimeISO: "2026-11-21T14:00:00+01:00",
 };
 
-// 5 real photos: garden couple, rings close-up, groom on staircase,
-// bride by the window, sunset couple on the palm-lined path (last).
+// Hero = couple3. Houses = groom3 / bride2. Gallery = the rest.
 const GALLERY = [
-  galleryPhoto1,
-  galleryPhoto2,
-  galleryPhoto4,
-  galleryPhoto5,
- 
+  couple6,
+  couple5,
+  couple1,
+  couple2,
+  groom1,
+  bride3,
+  groom2,
+  bride1,
+  couple4,
 ];
 
-const HERO_VIDEO_POSTER = heroPhoto;
+// How many photos show in the "Chronicles" grid (keep it even).
+const GALLERY_VISIBLE = 4;
+
+const HERO_VIDEO_POSTER = couple3;
 
 const BG_AMBIENT_MUSIC_URL = "";
 const GUEST_UPLOAD_URL = "https://mediahub-frontend-4tdp.vercel.app";
@@ -226,8 +237,20 @@ function GlobalInviteStyles() {
       }
       .wi-pulse-dot { animation: wi-pulse-dot 1.4s ease-in-out infinite; }
 
+      @keyframes wi-shimmer {
+        0%   { transform: translateX(-120%) skewX(-20deg); }
+        60%, 100% { transform: translateX(260%) skewX(-20deg); }
+      }
+      .wi-shimmer { animation: wi-shimmer 2.8s ease-in-out infinite; }
+
+      @keyframes wi-float {
+        0%,100% { transform: translateY(0); }
+        50%     { transform: translateY(-7px); }
+      }
+      .wi-float { animation: wi-float 4s ease-in-out infinite; }
+
       @media (prefers-reduced-motion: reduce) {
-        .wi-tap-icon, .wi-tap-ripple, .wi-candle, .wi-pulse-dot { animation: none; }
+        .wi-tap-icon, .wi-tap-ripple, .wi-candle, .wi-pulse-dot, .wi-shimmer, .wi-float { animation: none; }
       }
     `}</style>
   );
@@ -664,75 +687,165 @@ function RsvpLocked({ checking }) {
 }
 
 // ─────────────────────────────────────────────────────────
-// Guest photo upload
+// Wax medallion
+// ─────────────────────────────────────────────────────────
+function WaxDisc() {
+  return (
+    <div
+      style={{
+        width: "100%", height: "100%",
+        borderRadius: "50%",
+        background: "linear-gradient(135deg, #7a1220 0%, #4a0a12 100%)",
+        border: "1px solid #c9a24a",
+        overflow: "hidden",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+    >
+      <img
+        src={SEAL_URL}
+        alt="House seal"
+        style={{ width: "70%", height: "70%", objectFit: "contain" }}
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// Guest photo upload — "ad style" memories collage
+// ─────────────────────────────────────────────────────────
+function Polaroid({ src, rot = 0, className = "", style = {}, delay = 0, floatDelay = 0 }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.7, rotate: 0 }}
+      whileInView={{ opacity: 1, scale: 1, rotate: rot }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ delay, type: "spring", stiffness: 120, damping: 14 }}
+      className={`absolute ${className}`}
+      style={style}
+    >
+      <div className="wi-float" style={{ animationDelay: `${floatDelay}s` }}>
+        <div
+          style={{
+            background: "#fbf4df",
+            padding: "6px 6px 20px",
+            border: "1px solid #c9a24a",
+            boxShadow: "0 10px 22px rgba(30,15,5,0.35)",
+          }}
+        >
+          <img
+            src={src}
+            alt=""
+            className="block w-full object-cover"
+            style={{ aspectRatio: "1 / 1.1" }}
+            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = FALLBACK_PHOTO; }}
+          />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 function GuestUploadSection() {
   return (
-    <section className="px-6 py-16" style={{ background: "#efe3c2" }}>
+    <section className="relative overflow-hidden px-6 py-14" style={{ background: "#efe3c2" }}>
       <p className="font-serif text-center text-[11px]" style={{ letterSpacing: "0.4em", color: "#7a1220" }}>
         RAVENS OF THE REALM
       </p>
-      <h2 className="font-serif mt-2 text-center text-2xl" style={{ color: "#1c1a15", letterSpacing: "0.1em" }}>
-        Share Your Chronicle
+      <h2 className="font-black-letter mt-2 text-center text-4xl leading-tight" style={{ color: "#7a1220" }}>
+        Caught a moment?
       </h2>
-      <div className="wi-goldline mx-auto mt-3 h-px w-24" />
-
-      <p className="mx-auto mt-5 max-w-sm text-center text-sm italic" style={{ color: "#4a3820" }}>
-        Every guest is a keeper of memory. Upload the moments you capture at our
-        feast — that our saga may be told in full.
+      <p className="mx-auto mt-2 max-w-xs text-center text-sm italic" style={{ color: "#4a3820" }}>
+        Share it with us and help tell our saga in full.
       </p>
+      <div className="wi-goldline mx-auto mt-4 h-px w-24" />
 
-      {/* Preview — a photograph pinned to parchment, sealed like a
-          dispatch from the archive rather than a plain thumbnail box. */}
-      <motion.div
-        initial={{ opacity: 0, y: 24, rotate: -6 }}
-        whileInView={{ opacity: 1, y: 0, rotate: -3 }}
-        viewport={{ once: true, amount: 0.4 }}
-        whileHover={{ rotate: 0, scale: 1.03 }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className="relative mx-auto mt-10"
-        style={{ width: 168 }}
-      >
-        {/* parchment card behind the photo, like a mat */}
+      {/* Collage */}
+      <div className="relative mx-auto mt-8" style={{ width: "100%", maxWidth: 340, height: 360 }}>
+        {/* soft glow behind the seal */}
         <div
-          className="wi-ancient wi-ancient-stains wi-ancient-fiber wi-burnt-edge relative p-2 pb-5"
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
           style={{
-            border: "1px solid #7a5a2c",
-            boxShadow: "0 14px 34px rgba(30,15,5,0.35)",
+            width: 260, height: 260,
+            background: "radial-gradient(circle, rgba(201,162,74,0.55), transparent 70%)",
           }}
-        >
-          <div
-            className="overflow-hidden"
-            style={{ border: "1px solid rgba(30,15,5,0.5)" }}
-          >
-            <img
-              src={guestUploadPreview}
-              alt="Preview of the guest photo upload page"
-              className="block w-full"
-              onError={(e) => { e.currentTarget.style.display = "none"; }}
-            />
-          </div>
-        </div>
+        />
 
-        {/* wax seal stamped over the corner, tying it back to the
-            invitation's opening seal */}
+        {/* tilted polaroids */}
+        <Polaroid src={GALLERY[1]} rot={-11} delay={0.1} floatDelay={0}
+          style={{ width: 118, left: 0, top: 6 }} />
+        <Polaroid src={GALLERY[2]} rot={9} delay={0.25} floatDelay={1}
+          style={{ width: 112, right: 0, top: 18 }} />
+        <Polaroid src={GALLERY[5]} rot={-6} delay={0.4} floatDelay={2}
+          style={{ width: 104, left: 8, bottom: 6 }} />
+        <Polaroid src={GALLERY[4]} rot={7} delay={0.55} floatDelay={1.5}
+          style={{ width: 100, right: 6, bottom: 0 }} />
+
+        {/* center: wax seal with camera */}
         <motion.div
-          initial={{ scale: 0, rotate: 0 }}
-          whileInView={{ scale: 1, rotate: 18 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.4, type: "spring", stiffness: 200, damping: 14 }}
-          className="absolute"
-          style={{ top: -14, right: -14, width: 44, height: 44 }}
+          initial={{ opacity: 0, scale: 0.4 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ delay: 0.3, type: "spring", stiffness: 160, damping: 14 }}
+          className="absolute left-1/2 top-1/2 z-10"
+          style={{ width: 96, height: 96, marginLeft: -48, marginTop: -48 }}
         >
-          <WaxDisc />
+          <div className="wi-float" style={{ width: "100%", height: "100%", filter: "drop-shadow(0 12px 18px rgba(30,15,5,0.45))" }}>
+            <WaxDisc />
+          </div>
+          <div
+            className="absolute flex items-center justify-center rounded-full"
+            style={{
+              right: -8, bottom: -8, width: 34, height: 34,
+              background: "#efe3c2", color: "#7a1220", border: "1px solid #c9a24a",
+              boxShadow: "0 4px 10px rgba(30,15,5,0.35)",
+            }}
+          >
+            <FaCamera size={14} />
+          </div>
         </motion.div>
-      </motion.div>
 
-      <div className="mt-10 flex justify-center">
-        <a
+        {/* floating hearts */}
+        {[
+          { l: "30%", t: "2%", d: 0 },
+          { l: "68%", t: "-2%", d: 0.8 },
+          { l: "46%", t: "92%", d: 1.4 },
+        ].map((h, i) => (
+          <motion.span
+            key={i}
+            className="pointer-events-none absolute"
+            style={{ left: h.l, top: h.t, color: "#7a1220" }}
+            animate={{ y: [0, -10, 0], opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2.6, repeat: Infinity, delay: h.d }}
+          >
+            <FaHeart size={12} />
+          </motion.span>
+        ))}
+      </div>
+
+      {/* Steps strip */}
+      <div className="mx-auto mt-8 flex max-w-xs items-center justify-center gap-2 text-[10px] uppercase"
+        style={{ letterSpacing: "0.22em", color: "#7a5a2c" }}>
+        <span>Tap</span><span style={{ color: "#7a1220" }}>✦</span>
+        <span>Pick</span><span style={{ color: "#7a1220" }}>✦</span>
+        <span>Share</span>
+      </div>
+
+      {/* CTA */}
+      <div className="mt-5 flex justify-center">
+        <motion.a
           href={GUEST_UPLOAD_URL}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-[11px] uppercase"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.96 }}
+          animate={{
+            boxShadow: [
+              "0 0 0 0 rgba(122,18,32,0.45)",
+              "0 0 0 14px rgba(122,18,32,0)",
+            ],
+          }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
+          className="relative inline-flex items-center gap-2 overflow-hidden rounded-full px-7 py-3.5 text-[11px] uppercase"
           style={{
             letterSpacing: "0.3em",
             color: "#efe3c2",
@@ -741,11 +854,16 @@ function GuestUploadSection() {
             fontFamily: "'Cinzel', serif",
           }}
         >
-          <FaCamera /> Upload Your Photos
-        </a>
+          <span
+            className="wi-shimmer pointer-events-none absolute inset-y-0 left-0"
+            style={{ width: 40, background: "linear-gradient(90deg, transparent, rgba(255,235,180,0.45), transparent)" }}
+          />
+          <FaCamera className="relative" />
+          <span className="relative">Upload Your Photos</span>
+        </motion.a>
       </div>
 
-      <p className="mt-4 text-center text-[10px]" style={{ letterSpacing: "0.3em", color: "#7a5a2c" }}>
+      <p className="mt-5 text-center text-[10px]" style={{ letterSpacing: "0.3em", color: "#7a5a2c" }}>
         <FaScroll className="mr-2 inline-block" />
         BEAR WITNESS · KEEP THE MEMORY
       </p>
@@ -770,30 +888,6 @@ function TapHint({ label = "Break the Seal" }) {
           <path d="M20.3 17v-5.6a1.7 1.7 0 0 1 3.4 0v8.7c0 3.2-2.3 5.7-6 5.7h-1.9c-1.9 0-2.9-.6-4-1.9l-2.8-3.4c-.6-.8-.4-1.7.4-2.2.7-.5 1.5-.3 2.1.3l1.7 1.8" />
         </svg>
       </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────
-// Wax medallion
-// ─────────────────────────────────────────────────────────
-function WaxDisc() {
-  return (
-    <div
-      style={{
-        width: "100%", height: "100%",
-        borderRadius: "50%",
-        background: "linear-gradient(135deg, #7a1220 0%, #4a0a12 100%)",
-        border: "1px solid #c9a24a",
-        overflow: "hidden",
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}
-    >
-      <img
-        src={SEAL_URL}
-        alt="House seal"
-        style={{ width: "70%", height: "70%", objectFit: "contain" }}
-      />
     </div>
   );
 }
@@ -1406,18 +1500,18 @@ export default function WeddingInvitation() {
 
         <SectionDivider symbol="✦" />
 
-        {/* GALLERY */}
+        {/* GALLERY — reduced to GALLERY_VISIBLE photos */}
         <section className="px-6">
           <h3 className="text-center font-serif text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.35em" }}>
             Chronicles
           </h3>
           <div className="mt-6 grid grid-cols-2 gap-4">
-            {GALLERY.map((src, i) => (
+            {GALLERY.slice(0, GALLERY_VISIBLE).map((src, i) => (
               <ArchFrame
                 key={i}
                 src={src}
                 alt={`Gallery ${i + 1}`}
-                className={`h-48 w-full ${GALLERY.length % 2 === 1 && i === GALLERY.length - 1 ? "col-span-2" : ""}`}
+                className="h-48 w-full"
                 delay={i * 0.08}
               />
             ))}
