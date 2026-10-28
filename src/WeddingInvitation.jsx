@@ -23,6 +23,8 @@ import bride3 from "./assets/bride3.jpg";
 import groom1 from "./assets/groom1.jpg";
 import groom2 from "./assets/groom2.jpg";
 import groom3 from "./assets/groom3.jpg";
+// Groom's portrait for "The Two Houses" (change the extension if yours isn't .png)
+import groomSuite from "./assets/groom_suite-clean.png";
 
 // ─────────────────────────────────────────────────────────
 // DATA
@@ -35,7 +37,7 @@ const COUPLE = {
     origin: ["of Tyuluv Ward,", "Ukum LGA,", "Benue State."],
     parents: ["Mr. Gbugho Amokaha Donald", "Mrs. Gbugho Juliana"],
     instagram: "https://www.instagram.com/bizzare_ix?igsh=OW1pN2ExM2NqeXc2&igsi=OW1pN2ExM2NqeXc2",
-    photo: groom3,
+    photo: groomSuite,
   },
   bride: {
     nickname: "Paloma",
@@ -61,9 +63,10 @@ const EVENT = {
   weddingDateTimeISO: "2026-11-21T14:00:00+01:00",
 };
 
-// Hero = couple3. Houses = groom3 / bride2. Gallery = the rest.
+// Hero = couple3. Houses = groomSuite / bride2. Countdown frame = couple6.
+// Gallery = the rest (groom3 now leads it).
 const GALLERY = [
-  couple6,
+  groom3,
   couple5,
   couple1,
   couple2,
@@ -1491,7 +1494,7 @@ export default function WeddingInvitation() {
             {COUPLE.hashtag}
           </motion.p>
 
-          <ArchFrame src={GALLERY[0]} alt="" className="mx-auto mt-8 h-64 w-64" />
+          <ArchFrame src={couple6} alt="" className="mx-auto mt-8 h-64 w-64" />
 
           <p className="mt-6 font-serif text-lg italic" style={{ color: "#7a1220" }}>
             May the Lord bless and keep our union.
