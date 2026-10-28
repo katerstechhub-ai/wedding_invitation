@@ -24,7 +24,7 @@ import groom1 from "./assets/groom1.jpg";
 import groom2 from "./assets/groom2.jpg";
 import groom3 from "./assets/groom3.jpg";
 // Groom's portrait for "The Two Houses" (change the extension if yours isn't .png)
-import groomSuite from "./assets/groom_suite-clean.png";
+import groomSuite from "./assets/groom_suite-clean.jpg";
 
 // ─────────────────────────────────────────────────────────
 // DATA
