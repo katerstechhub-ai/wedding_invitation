@@ -74,7 +74,7 @@ const EVENT = {
   day: "SATURDAY",
   date: "21 NOVEMBER 2026",
   ceremonyTime: "2:00 PM",
-  venueName: "Luxe Lush Park @ Riverplate Park",
+  venueName: "Luxe Lush event  center",
   venueAddress: "70 Kur Mohammed Avenue, Wuse 2, Abuja, Nigeria",
   mapsUrl:
     "https://www.google.com/maps/search/?api=1&query=Luxe+Lush+Park+Riverplate+Park+70+Kur+Mohammed+Avenue+Wuse+2+Abuja+Nigeria",
