@@ -26,18 +26,36 @@ import groom3 from "./assets/groom3.jpg";
 // Groom's portrait for "The Two Houses" (change the extension if yours isn't .png)
 import groomSuite from "./assets/groom_suite-clean.jpg";
 
+// New "-clean" photos (image-clean, image-2-clean ... image-5-clean).
+// Looked up by file name, so .jpg / .jpeg / .png all work.
+const CLEAN_FILES = import.meta.glob("./assets/image*-clean.{jpg,jpeg,png,webp,JPG,JPEG,PNG}", {
+  eager: true,
+  import: "default",
+});
+const CLEAN = {};
+const cleanKeys = Object.keys(CLEAN_FILES);
+for (let i = 0; i < cleanKeys.length; i++) {
+  const file = cleanKeys[i].split("/").pop();
+  CLEAN[file.substring(0, file.lastIndexOf("."))] = CLEAN_FILES[cleanKeys[i]];
+}
+const imageClean = CLEAN["image-clean"];
+const image2Clean = CLEAN["image-2-clean"];
+const image3Clean = CLEAN["image-3-clean"];
+const image4Clean = CLEAN["image-4-clean"];
+const image5Clean = CLEAN["image-5-clean"];
+
 // ─────────────────────────────────────────────────────────
 // DATA
 // ─────────────────────────────────────────────────────────
 const COUPLE = {
-  hashtag: "#TElovestory2026",
+  hashtag: "#TELoveStory2026",
   groom: {
     nickname: "Bizzer",
     fullName: "Kenneth Tesem Gbugho",
     origin: ["of Tyuluv Ward,", "Ukum LGA,", "Benue State."],
     parents: ["Mr. Gbugho Amokaha Donald", "Mrs. Gbugho Juliana"],
     instagram: "https://www.instagram.com/bizzare_ix?igsh=OW1pN2ExM2NqeXc2&igsi=OW1pN2ExM2NqeXc2",
-    photo: groomSuite,
+    photo: groom3,
   },
   bride: {
     nickname: "Paloma",
@@ -45,7 +63,7 @@ const COUPLE = {
     origin: ["of Ade-Igwu – Orokam,", "Ogbadibo LGA,", "Benue State."],
     parents: ["Mr. Augustine Ogbe Ameh", "Mrs. Agatha Ichame Ameh"],
     instagram: "https://www.instagram.com/ruruu_fundz?igsh=MWVmZjRwdTM5a3I4cg==&igsi=MWVmZjRwdTM5a3I4cg==",
-    photo: bride2,
+    photo: image2Clean,
   },
 };
 
@@ -63,24 +81,33 @@ const EVENT = {
   weddingDateTimeISO: "2026-11-21T14:00:00+01:00",
 };
 
-// Hero = couple3. Houses = groomSuite / bride2. Countdown frame = couple6.
-// Gallery = the rest (groom3 now leads it).
+// Hero = image-3-clean. Houses = groom3 / image-2-clean. Countdown frame = couple6.
+// Chronicles = the old house photos + image-5-clean + image-clean (2 x 2).
 const GALLERY = [
-  groom3,
-  couple5,
-  couple1,
-  couple2,
-  groom1,
-  bride3,
-  groom2,
-  bride1,
-  couple4,
+  groomSuite,
+  imageClean,
+  image5Clean,
+  bride2,
 ];
 
 // How many photos show in the "Chronicles" grid (keep it even).
 const GALLERY_VISIBLE = 4;
 
-const HERO_VIDEO_POSTER = couple3;
+// Every other photo — these rotate through the "Upload Your Photos" collage.
+const UPLOAD_PHOTOS = [
+  couple1,
+  groom1,
+  couple4,
+  bride1,
+  couple2,
+  image4Clean,
+  couple5,
+  bride3,
+  couple3,
+  groom2,
+];
+
+const HERO_VIDEO_POSTER = image3Clean;
 
 const BG_AMBIENT_MUSIC_URL = "";
 const GUEST_UPLOAD_URL = "https://mediahub-frontend-4tdp.vercel.app";
@@ -275,7 +302,7 @@ function FloralCorner({ className = "", flip = false, tone = "ink" }) {
     >
       <path d="M10 170 C 40 120, 80 80, 170 10" stroke={c.line} strokeWidth="1.2" fill="none" />
       <path d="M10 170 C 60 140, 100 100, 170 40" stroke={c.line} strokeWidth="0.8" fill="none" opacity="0.6" />
-      {[[40,150],[65,125],[95,105],[125,85],[155,55]].map(([x,y],i)=>(
+      {[[40, 150], [65, 125], [95, 105], [125, 85], [155, 55]].map(([x, y], i) => (
         <circle key={i} cx={x} cy={y} r="2" fill={c.dot} />
       ))}
     </svg>
@@ -436,7 +463,7 @@ function DressCodeSection() {
         className="text-center font-serif text-[10px] uppercase"
         style={{ color: "#7a1220", letterSpacing: "0.35em" }}
       >
-        Attire of the Realm
+        Color of the Day
       </h3>
       <p
         className="mt-2 text-center font-black-letter text-3xl"
@@ -449,7 +476,7 @@ function DressCodeSection() {
         style={{ color: "#4a3820" }}
       >
         We ask our guests to dress in the spirit of the evening — gentlemen
-        in black or white, ladies in rich, natural tones.
+        in black tux, ladies in rich, natural tones.
       </p>
 
       <div
@@ -735,7 +762,11 @@ function Polaroid({ src, rot = 0, className = "", style = {}, delay = 0, floatDe
             boxShadow: "0 10px 22px rgba(30,15,5,0.35)",
           }}
         >
-          <img
+          <motion.img
+            key={src}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.9 }}
             src={src}
             alt=""
             className="block w-full object-cover"
@@ -749,6 +780,13 @@ function Polaroid({ src, rot = 0, className = "", style = {}, delay = 0, floatDe
 }
 
 function GuestUploadSection() {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((n) => n + 1), 3500);
+    return () => clearInterval(id);
+  }, []);
+  const pick = (offset) => UPLOAD_PHOTOS[(tick + offset) % UPLOAD_PHOTOS.length];
+
   return (
     <section className="relative overflow-hidden px-6 py-14" style={{ background: "#efe3c2" }}>
       <p className="font-serif text-center text-[11px]" style={{ letterSpacing: "0.4em", color: "#7a1220" }}>
@@ -774,13 +812,13 @@ function GuestUploadSection() {
         />
 
         {/* tilted polaroids */}
-        <Polaroid src={GALLERY[1]} rot={-11} delay={0.1} floatDelay={0}
+        <Polaroid src={pick(0)} rot={-11} delay={0.1} floatDelay={0}
           style={{ width: 118, left: 0, top: 6 }} />
-        <Polaroid src={GALLERY[2]} rot={9} delay={0.25} floatDelay={1}
+        <Polaroid src={pick(2)} rot={9} delay={0.25} floatDelay={1}
           style={{ width: 112, right: 0, top: 18 }} />
-        <Polaroid src={GALLERY[5]} rot={-6} delay={0.4} floatDelay={2}
+        <Polaroid src={pick(5)} rot={-6} delay={0.4} floatDelay={2}
           style={{ width: 104, left: 8, bottom: 6 }} />
-        <Polaroid src={GALLERY[4]} rot={7} delay={0.55} floatDelay={1.5}
+        <Polaroid src={pick(7)} rot={7} delay={0.55} floatDelay={1.5}
           style={{ width: 100, right: 6, bottom: 0 }} />
 
         {/* center: wax seal with camera */}
@@ -900,14 +938,14 @@ function TapHint({ label = "Break the Seal" }) {
 // ─────────────────────────────────────────────────────────
 function CoverScreen({ onOpen, guestName }) {
   const [phase, setPhase] = useState("idle");
-  const cracked  = phase !== "idle";
-  const opening  = phase === "opening" || phase === "revealed";
+  const cracked = phase !== "idle";
+  const opening = phase === "opening" || phase === "revealed";
   const revealed = phase === "revealed";
 
   const handleTap = () => {
     if (phase !== "idle") return;
     setPhase("cracking");
-    setTimeout(() => setPhase("opening"),  650);
+    setTimeout(() => setPhase("opening"), 650);
     setTimeout(() => setPhase("revealed"), 1500);
   };
 
@@ -966,7 +1004,7 @@ function CoverScreen({ onOpen, guestName }) {
           perspective: 1400,
         }}
       >
-      <div
+        <div
           className="wi-ancient wi-ancient-stains wi-ancient-fiber absolute inset-0 overflow-hidden"
           style={{
             borderRadius: 6,
@@ -992,8 +1030,7 @@ function CoverScreen({ onOpen, guestName }) {
             <p className="font-serif mt-4 text-[10px]" style={{ letterSpacing: "0.4em", color: "#5a3a1a" }}>
               TWO GREAT HOUSES UNITE
             </p>
-            <p className="font-black-letter mt-6 text-5xl" style={{ color: "#3a1a08" }}>&</p>
-            <h1 className="font-serif mt-3 text-2xl" style={{ letterSpacing: "0.12em", color: "#2a1408" }}>
+            <h1 className="font-serif mt-6 text-2xl" style={{ letterSpacing: "0.12em", color: "#2a1408" }}>
               {COUPLE.groom.nickname} & {COUPLE.bride.nickname}
             </h1>
             <div className="wi-inkline mt-5 h-px w-24 opacity-70" />
@@ -1009,7 +1046,7 @@ function CoverScreen({ onOpen, guestName }) {
                   className="font-serif text-[9px] uppercase"
                   style={{ letterSpacing: "0.3em", color: "#5a3a1a" }}
                 >
-                  A summons unto
+                  A summon unto
                 </p>
                 <p
                   className="mt-1 text-lg font-bold"
@@ -1273,7 +1310,7 @@ export default function WeddingInvitation() {
   };
 
   useEffect(() => {
-    if (opened && audioRef.current && !muted) audioRef.current.play().catch(() => {});
+    if (opened && audioRef.current && !muted) audioRef.current.play().catch(() => { });
   }, [opened, muted]);
 
   const fadeUp = {
@@ -1315,12 +1352,7 @@ export default function WeddingInvitation() {
 
         {/* HERO */}
         <section ref={sectionRefs.home} className="relative px-6 pt-12 text-center">
-          <motion.p initial="hidden" animate="show" variants={fadeUp}
-            className="font-black-letter text-4xl" style={{ color: "#7a1220" }}>
-            &
-          </motion.p>
-
-          <motion.div ref={heroRef} style={{ y: heroY, scale: heroScale }} className="mx-auto mt-6">
+          <motion.div ref={heroRef} style={{ y: heroY, scale: heroScale }} className="mx-auto">
             <ArchFrame src={HERO_VIDEO_POSTER} alt="Cover" className="mx-auto h-[440px] w-[290px]" />
           </motion.div>
 
@@ -1401,7 +1433,6 @@ export default function WeddingInvitation() {
             </motion.div>
           ))}
 
-          <div className="mt-10 text-center font-black-letter text-5xl" style={{ color: "#7a1220" }}>&</div>
         </section>
 
         <SectionDivider />
@@ -1483,7 +1514,7 @@ export default function WeddingInvitation() {
           </div>
 
           <motion.p whileHover={{ scale: 1.05 }}
-            className="mt-6 inline-block rounded-full px-5 py-2 text-[10px] uppercase"
+            className="mt-6 inline-block rounded-full px-5 py-2 text-[10px]"
             style={{
               letterSpacing: "0.3em",
               color: "#efe3c2",
