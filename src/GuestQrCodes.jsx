@@ -7,6 +7,10 @@ const API_BASE =
 const ADMIN_KEY_STORAGE = "mediahub_wedding_admin_key";
 const GROUPS_STORAGE = "mediahub_wedding_guest_groups";
 
+// Shown to every guest together with their QR code / link.
+const ONE_TIME_NOTE =
+  "Please note: this QR code can be used only once — it is scanned at the entrance and will not work a second time. Do not share it with anyone else.";
+
 // Personal invitation link for one guest (same link the QR code points to).
 const guestLink = (g) => `${SITE_URL}/?token=${encodeURIComponent(g.token)}`;
 
@@ -379,7 +383,7 @@ function QrModal({ guest, onClose }) {
     // Some apps (esp. when sharing an image file) drop the separate `url`
     // field, so the link is folded into the text itself to make sure it
     // always goes along with the QR code.
-    const shareText = `You're invited! 🎉 Here's your QR code for check-in at the wedding — just show this at the entrance.\n\nWedding invitation link: ${guestUrl}`;
+    const shareText = `You're invited! 🎉 Here's your QR code for check-in at the wedding — just show this at the entrance.\n\n⚠️ ${ONE_TIME_NOTE}\n\nWedding invitation link: ${guestUrl}`;
 
     try {
       // Prefer sharing the actual QR image (WhatsApp, etc. show it as a photo)
@@ -412,8 +416,8 @@ function QrModal({ guest, onClose }) {
         return;
       }
 
-      // Desktop / unsupported browsers: copy the link instead
-      await navigator.clipboard.writeText(guestUrl);
+      // Desktop / unsupported browsers: copy the message + link instead
+      await navigator.clipboard.writeText(`${shareText}`);
       setShareState("copied");
       setTimeout(() => setShareState("idle"), 1800);
     } catch (err) {
@@ -422,7 +426,7 @@ function QrModal({ guest, onClose }) {
         return;
       }
       try {
-        await navigator.clipboard.writeText(guestUrl);
+        await navigator.clipboard.writeText(shareText);
         setShareState("copied");
         setTimeout(() => setShareState("idle"), 1800);
       } catch {
@@ -435,7 +439,7 @@ function QrModal({ guest, onClose }) {
   const shareLabel = {
     idle: "Share",
     sharing: "Sharing…",
-    copied: "Link copied!",
+    copied: "Message copied!",
     error: "Couldn't share",
   }[shareState];
 
@@ -520,6 +524,21 @@ function QrModal({ guest, onClose }) {
         <p style={{ fontSize: 11, color: T.sub, wordBreak: "break-all", marginTop: 4 }}>
           {guestUrl}
         </p>
+        <p
+          style={{
+            fontSize: 11,
+            color: T.warn,
+            background: T.warnBg,
+            borderRadius: 12,
+            padding: "8px 12px",
+            marginTop: 12,
+            marginBottom: 0,
+            fontWeight: 600,
+            lineHeight: 1.4,
+          }}
+        >
+          This QR code can be used only once. The share message tells the guest so.
+        </p>
 
         <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 18 }}>
           <button
@@ -570,7 +589,7 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
   if (guests.length === 0)
     return (
       <p style={{ marginTop: 20, color: T.sub, fontSize: 14 }}>
-        {emptyMessage || "No guests yet. Add your first guest above."}
+        {emptyMessage || "No guests yet. Guests appear here as they RSVP, or add them above."}
       </p>
     );
 
@@ -776,6 +795,7 @@ export default function GuestQrCodes() {
   const [activeGroup, setActiveGroup] = useState("");
   const [selected, setSelected] = useState(() => new Set());
   const [copied, setCopied] = useState(""); // "" | "names" | "links" | "error"
+  const [inviteCopied, setInviteCopied] = useState(""); // "" | "ok" | "error"
 
   useEffect(() => {
     try {
@@ -856,7 +876,8 @@ export default function GuestQrCodes() {
   };
 
   // Quiet polling so this table stays in sync with check-ins happening on
-  // the scanner page (or another admin's tab) without needing a websocket.
+  // the scanner page, and with guests who RSVP through the single invitation
+  // link (they show up here on their own), without needing a websocket.
   useEffect(() => {
     if (keyStatus !== "valid") return;
     const id = setInterval(fetchGuests, 6000);
@@ -1026,9 +1047,21 @@ export default function GuestQrCodes() {
   };
 
   const handleCopy = async (kind) => {
-    const ok = await copyText(formatGuestList(selectedGuests, kind === "links"));
+    const list = formatGuestList(selectedGuests, kind === "links");
+    // Personal links go out with the one-time reminder.
+    const text = kind === "links" ? `${list}\n\n${ONE_TIME_NOTE}` : list;
+    const ok = await copyText(text);
     setCopied(ok ? kind : "error");
     setTimeout(() => setCopied(""), 1800);
+  };
+
+  // One message for everybody: the single invitation link. Guests open it and
+  // RSVP with their own name — they then appear in the table below.
+  const handleCopyInvite = async () => {
+    const text = `You're invited to our wedding! 🎉\n\nOpen the invitation and RSVP here: ${SITE_URL}\n\nEnter your name when you RSVP. After that, you'll be on the guest list.\n\n${ONE_TIME_NOTE}`;
+    const ok = await copyText(text);
+    setInviteCopied(ok ? "ok" : "error");
+    setTimeout(() => setInviteCopied(""), 1800);
   };
 
   return (
@@ -1144,6 +1177,59 @@ export default function GuestQrCodes() {
           )}
         </Card>
 
+        {/* Single invitation link — one message for everybody */}
+        {canUse && (
+          <Card style={{ marginBottom: 18 }}>
+            <h2 style={{ color: T.ink, fontSize: 16, margin: "0 0 6px", fontWeight: 700 }}>
+              Invitation link for everyone
+            </h2>
+            <p style={{ color: T.sub, fontSize: 13, margin: "0 0 12px", lineHeight: 1.5 }}>
+              Send this one link to all your guests. Anyone who RSVPs is added to the guest list below
+              automatically with the name they enter.
+            </p>
+            <p
+              style={{
+                fontSize: 12,
+                color: T.ink,
+                background: T.soft,
+                borderRadius: 12,
+                padding: "10px 14px",
+                margin: "0 0 12px",
+                wordBreak: "break-all",
+              }}
+            >
+              {SITE_URL}
+            </p>
+            <button
+              onClick={handleCopyInvite}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "10px 18px",
+                borderRadius: 999,
+                border: "none",
+                background: inviteCopied === "ok" ? T.goodBg : T.accent,
+                color: inviteCopied === "ok" ? T.good : T.accentInk,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              {inviteCopied === "ok" ? <CheckIcon /> : <CopyIcon />}
+              {inviteCopied === "ok" ? "Copied!" : "Copy invitation message"}
+            </button>
+            {inviteCopied === "error" && (
+              <span style={{ color: T.bad, fontSize: 12, marginLeft: 10 }}>
+                Couldn't copy — your browser blocked it
+              </span>
+            )}
+            <p style={{ color: T.sub, fontSize: 11, margin: "12px 0 0" }}>
+              The message includes the reminder that each QR code can be used only once.
+            </p>
+          </Card>
+        )}
+
         {error && (
           <div
             style={{
@@ -1196,7 +1282,7 @@ export default function GuestQrCodes() {
             <p style={{ fontSize: 11, color: T.sub, marginTop: 6, marginBottom: 0 }}>
               {guestType === "physical"
                 ? "These guests carry a printed invitation card — check them in by name, no QR needed."
-                : "These guests get a QR code for entry."}
+                : "These guests get a QR code for entry (valid for one scan only)."}
             </p>
           </div>
 
@@ -1392,7 +1478,7 @@ export default function GuestQrCodes() {
                 emptyMessage={
                   tableSearch.trim()
                     ? `No guests match "${tableSearch.trim()}".`
-                    : "No guests yet. Add your first guest above."
+                    : "No guests yet. Guests appear here as they RSVP, or add them above."
                 }
               />
             </>

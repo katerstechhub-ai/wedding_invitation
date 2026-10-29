@@ -118,6 +118,8 @@ const API_BASE =
   import.meta.env.VITE_GUEST_API_URL || "https://wedding-guest-backend-b9g8.onrender.com/api";
 
 const RSVP_DONE_KEY = "wi_rsvp_done_v1";
+// Entry pass handed out right after an RSVP made through the shared link.
+const MY_PASS_KEY = "wi_my_pass_v1";
 
 // Must match SITE_URL in the admin QR page so the scanner reads the same link.
 const SITE_URL = "https://wedding-invitation-taupe-seven-44.vercel.app";
@@ -157,6 +159,9 @@ function EntryPass({ token, name }) {
         )}
         <p className="mt-1 text-xs italic" style={{ color: "#7a5a2c" }}>
           Show this at the entrance
+        </p>
+        <p className="mt-2 text-[11px] font-semibold" style={{ color: "#7a1220" }}>
+          This QR code can be used only once — keep it safe and don't share it.
         </p>
       </div>
       <button
@@ -499,9 +504,9 @@ function DressCodeSection() {
 
 // ─────────────────────────────────────────────────────────
 // RSVP form
-// Only rendered for guests with a valid personal token (see canRsvp in the
-// main component). The backend also enforces this — it rejects any RSVP
-// without a valid token and never creates guests from the form.
+// Open to everyone who has the single invitation link. A guest with a
+// personal token keeps their name locked; anyone else types their own name
+// and the backend adds them to the guest list when they RSVP.
 // ─────────────────────────────────────────────────────────
 function WishesForm({ token, prefillName, onSubmitted }) {
   const [name, setName] = useState(prefillName || "");
@@ -520,6 +525,7 @@ function WishesForm({ token, prefillName, onSubmitted }) {
 
   const validate = () => {
     const errs = {};
+    if (!token && !name.trim()) errs.name = "Please enter your name.";
     if (!email.trim()) errs.email = "Please enter your email.";
     else if (!EMAIL_RE.test(email.trim())) errs.email = "That email doesn't look right.";
     if (!attending) errs.attending = "Please let us know — yes, maybe, or no.";
@@ -544,9 +550,10 @@ function WishesForm({ token, prefillName, onSubmitted }) {
       const res = await fetch(`${API_BASE}/guests/rsvp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // The name is NOT sent — the server already knows it from the token.
+        // With a personal token the server already knows the name; otherwise
+        // the typed name is sent and the guest is added to the list.
         body: JSON.stringify({
-          token,
+          ...(token ? { token } : { name: name.trim() }),
           email,
           attending,
           message,
@@ -560,7 +567,7 @@ function WishesForm({ token, prefillName, onSubmitted }) {
       }
       setStatus("sent");
       setMessage("");
-      onSubmitted?.();
+      onSubmitted?.(body, attending);
     } catch {
       setErrorMsg("Could not reach the server — try again shortly.");
       setStatus("error");
@@ -585,19 +592,24 @@ function WishesForm({ token, prefillName, onSubmitted }) {
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
         <div>
           <label className="text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.3em" }}>
-            Your Name
+            Your Name{token ? "" : " *"}
           </label>
           <input
             type="text"
             value={name}
-            readOnly
+            readOnly={!!token}
+            onChange={(e) => setName(e.target.value)}
             className="mt-1 w-full bg-transparent pb-2 text-sm outline-none"
             style={{
-              borderBottom: "1px solid #7a5a2c",
+              borderBottom: token ? "1px solid #7a5a2c" : fieldBorder("name"),
               color: "#1c1a15",
-              opacity: 0.75,
+              opacity: token ? 0.75 : 1,
             }}
+            placeholder={token ? undefined : "Your full name"}
           />
+          {fieldErrors.name && (
+            <p className="mt-1 text-xs" style={{ color: "#b23b3b" }}>{fieldErrors.name}</p>
+          )}
         </div>
 
         <div>
@@ -1234,11 +1246,21 @@ export default function WeddingInvitation() {
     () => typeof window !== "undefined" && localStorage.getItem(RSVP_DONE_KEY) === "1"
   );
   const [showReminder, setShowReminder] = useState(false);
+  // Pass created by RSVPing through the shared link: { token, name }
+  const [myPass, setMyPass] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(MY_PASS_KEY) || "null");
+    } catch {
+      return null;
+    }
+  });
   const audioRef = useRef(null);
   const countdown = useCountdown(EVENT.weddingDateTimeISO);
 
-  // Only guests whose personal link was verified by the server can RSVP.
-  const canRsvp = tokenStatus === "valid";
+  // Anyone with the invitation link can RSVP. A verified personal link
+  // (?token=…) additionally pre-fills the name, shows the entry pass and
+  // enables the reminder nudges.
+  const hasPersonalLink = tokenStatus === "valid";
 
   const heroRef = useRef(null);
   const { scrollY } = useScroll();
@@ -1281,21 +1303,21 @@ export default function WeddingInvitation() {
   // Gently nudge verified guests who haven't RSVP'd yet — appears a little
   // while after opening the invite, not immediately.
   useEffect(() => {
-    if (!opened || rsvpDone || !canRsvp) return;
+    if (!opened || rsvpDone || !hasPersonalLink) return;
     const id = setTimeout(() => setShowReminder(true), 15000);
     return () => clearTimeout(id);
-  }, [opened, rsvpDone, canRsvp]);
+  }, [opened, rsvpDone, hasPersonalLink]);
 
   // Best-effort nudge if a verified guest tries to leave without RSVPing.
   useEffect(() => {
     const handler = (e) => {
-      if (rsvpDone || !canRsvp) return;
+      if (rsvpDone || !hasPersonalLink) return;
       e.preventDefault();
       e.returnValue = "";
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [rsvpDone, canRsvp]);
+  }, [rsvpDone, hasPersonalLink]);
 
   const scrollTo = (id) => {
     setActiveNav(id);
@@ -1303,7 +1325,20 @@ export default function WeddingInvitation() {
     sectionRefs[id]?.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleRsvpSubmitted = () => {
+  const handleRsvpSubmitted = (body, attending) => {
+    // The server returns the new guest's token when someone RSVPs through the
+    // shared link — keep it so their QR shows up right away (and on revisits).
+    const newToken = body?.token || body?.guest?.token;
+    const newName = body?.name || body?.guest?.name || "";
+    if (newToken && attending !== "no" && !hasPersonalLink) {
+      const pass = { token: newToken, name: newName };
+      setMyPass(pass);
+      try {
+        localStorage.setItem(MY_PASS_KEY, JSON.stringify(pass));
+      } catch {
+        /* storage unavailable */
+      }
+    }
     localStorage.setItem(RSVP_DONE_KEY, "1");
     setRsvpDone(true);
     setShowReminder(false);
@@ -1563,7 +1598,7 @@ export default function WeddingInvitation() {
 
         <SectionDivider />
 
-        {/* RSVP — form only for guests with a verified personal link */}
+        {/* RSVP — open to anyone with the invitation link */}
         <section ref={sectionRefs.rsvp}>
           <h3 className="text-center font-serif text-[10px] uppercase" style={{ color: "#7a1220", letterSpacing: "0.35em" }}>
             Send a Raven
@@ -1572,20 +1607,31 @@ export default function WeddingInvitation() {
             Answer the Summons
           </p>
           <div className="mt-6">
-            {canRsvp ? (
-              <WishesForm token={guestToken} prefillName={guestName} onSubmitted={handleRsvpSubmitted} />
+            {tokenStatus === "checking" ? (
+              <RsvpLocked checking />
             ) : (
-              <RsvpLocked checking={tokenStatus === "checking"} />
+              <WishesForm
+                token={hasPersonalLink ? guestToken : ""}
+                prefillName={guestName}
+                onSubmitted={handleRsvpSubmitted}
+              />
             )}
           </div>
         </section>
 
         {/* ENTRY PASS — only for verified guests with a personal link (not physical-card guests) */}
-        {canRsvp && guestType !== "physical" && (
+        {hasPersonalLink && guestType !== "physical" ? (
           <>
             <SectionDivider symbol="✦" />
             <EntryPass token={guestToken} name={guestName} />
           </>
+        ) : (
+          myPass?.token && (
+            <>
+              <SectionDivider symbol="✦" />
+              <EntryPass token={myPass.token} name={myPass.name} />
+            </>
+          )
         )}
 
         <SectionDivider symbol="✦" />
@@ -1618,10 +1664,10 @@ export default function WeddingInvitation() {
         </motion.footer>
       </motion.div>
 
-      {opened && <BottomNav active={activeNav} onNavigate={scrollTo} rsvpDone={rsvpDone || !canRsvp} />}
+      {opened && <BottomNav active={activeNav} onNavigate={scrollTo} rsvpDone={rsvpDone} />}
 
       <AnimatePresence>
-        {opened && showReminder && !rsvpDone && canRsvp && (
+        {opened && showReminder && !rsvpDone && hasPersonalLink && (
           <RsvpReminder
             onScrollToRsvp={() => scrollTo("rsvp")}
             onDismiss={() => setShowReminder(false)}
