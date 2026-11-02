@@ -67,6 +67,32 @@ const T = {
     "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif",
 };
 
+// Names shared by more than one guest (e.g. two people RSVP with the same
+// name). Those rows get a small tag so they can be told apart.
+function findDuplicateNames(guests) {
+  const counts = {};
+  for (let i = 0; i < guests.length; i++) {
+    const k = guests[i].name.trim().toLowerCase();
+    counts[k] = (counts[k] || 0) + 1;
+  }
+  const dups = {};
+  for (const k in counts) if (counts[k] > 1) dups[k] = true;
+  return dups;
+}
+function guestTag(g) {
+  return g.email || (g.token ? "ref " + String(g.token).slice(-4) : "");
+}
+function DupTag({ guest, dups }) {
+  if (!dups[guest.name.trim().toLowerCase()]) return null;
+  const tag = guestTag(guest);
+  if (!tag) return null;
+  return (
+    <span style={{ display: "block", marginTop: 2, fontSize: 11, fontWeight: 500, color: T.warn }}>
+      same name · {tag}
+    </span>
+  );
+}
+
 function EyeIcon({ off }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.sub} strokeWidth="2">
@@ -81,6 +107,31 @@ function EyeIcon({ off }) {
     </svg>
   );
 }
+
+// Compose links: Gmail and Yahoo open their web compose window, "app" opens
+// whatever email app the device has set up.
+const MAIL_SUBJECT = "Re: Your wedding RSVP";
+function composeLinks(to, bcc, body) {
+  const e = encodeURIComponent;
+  return {
+    gmail: `https://mail.google.com/mail/?view=cm&fs=1&to=${e(to)}&bcc=${e(bcc)}&su=${e(MAIL_SUBJECT)}&body=${e(body)}`,
+    yahoo: `https://compose.mail.yahoo.com/?to=${e(to)}&bcc=${e(bcc)}&subj=${e(MAIL_SUBJECT)}&body=${e(body)}`,
+    app: `mailto:${to}?bcc=${e(bcc)}&subject=${e(MAIL_SUBJECT)}&body=${e(body)}`,
+  };
+}
+const mailBtn = (dark) => ({
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: dark ? "9px 16px" : "11px 0",
+  flex: dark ? undefined : 1,
+  borderRadius: 999,
+  background: dark ? "rgba(255,255,255,0.14)" : T.accent,
+  color: dark ? "#fff" : T.accentInk,
+  fontSize: 13,
+  fontWeight: 700,
+  textDecoration: "none",
+});
 
 function CopyIcon() {
   return (
@@ -356,6 +407,17 @@ function MessageModal({ guest, onClose }) {
         >
           {guest.rsvpMessage || "No message left."}
         </div>
+
+        {guest.email && (() => {
+          const links = composeLinks(guest.email, "", `Hi ${guest.name},\n\n`);
+          return (
+            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+              <a href={links.gmail} target="_blank" rel="noreferrer" style={mailBtn(false)}>Gmail</a>
+              <a href={links.yahoo} target="_blank" rel="noreferrer" style={mailBtn(false)}>Yahoo</a>
+              <a href={links.app} style={mailBtn(false)}>Email app</a>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
@@ -596,6 +658,7 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
   const arrivedCount = guests.filter((g) => g.arrived).length;
   const pct = Math.round((arrivedCount / guests.length) * 100);
   const allSelected = guests.every((g) => selected.has(g._id));
+  const dups = findDuplicateNames(guests);
 
   return (
     <div style={{ marginTop: 20 }}>
@@ -673,6 +736,7 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
                 <td style={{ padding: "12px", color: T.sub }}>{i + 1}</td>
                 <td style={{ padding: "12px", color: T.ink, fontWeight: 600 }}>
                   {g.name}
+                  <DupTag guest={g} dups={dups} />
                   {groupsMap[g._id] && (
                     <span style={{ display: "block", marginTop: 2, fontSize: 11, fontWeight: 500, color: T.sub }}>
                       {groupsMap[g._id]}
@@ -1019,6 +1083,17 @@ export default function GuestQrCodes() {
 
   // Guests to copy = the ticked ones, in the order they appear in the list
   const selectedGuests = guests.filter((g) => selected.has(g._id));
+  const selectedEmails = [];
+  for (let i = 0; i < selectedGuests.length; i++) {
+    if (selectedGuests[i].email) selectedEmails.push(selectedGuests[i].email);
+  }
+  const bulkLinks = composeLinks("", selectedEmails.join(","), "");
+
+  const handleCopyEmails = async () => {
+    const ok = await copyText(selectedEmails.join(", "));
+    setCopied(ok ? "emails" : "error");
+    setTimeout(() => setCopied(""), 1800);
+  };
 
   const handleToggleSelect = (id) =>
     setSelected((prev) => {
@@ -1547,6 +1622,32 @@ export default function GuestQrCodes() {
             {copied === "links" ? <CheckIcon /> : <CopyIcon />}
             {copied === "links" ? "Copied!" : "Copy names + links"}
           </button>
+          {selectedEmails.length > 0 && (
+            <>
+              <a href={bulkLinks.gmail} target="_blank" rel="noreferrer" style={mailBtn(true)}>Gmail {selectedEmails.length}</a>
+              <a href={bulkLinks.yahoo} target="_blank" rel="noreferrer" style={mailBtn(true)}>Yahoo {selectedEmails.length}</a>
+              <a href={bulkLinks.app} style={mailBtn(true)}>Email app</a>
+              <button
+                onClick={handleCopyEmails}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "9px 16px",
+                  borderRadius: 999,
+                  border: "none",
+                  background: copied === "emails" ? T.goodBg : "rgba(255,255,255,0.14)",
+                  color: copied === "emails" ? T.good : "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {copied === "emails" ? <CheckIcon /> : <CopyIcon />}
+                {copied === "emails" ? "Copied!" : "Copy emails"}
+              </button>
+            </>
+          )}
           <button
             onClick={() => setSelected(new Set())}
             aria-label="Clear selection"
