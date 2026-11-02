@@ -108,17 +108,41 @@ function EyeIcon({ off }) {
   );
 }
 
-// Compose links: Gmail and Yahoo open their web compose window, "app" opens
-// whatever email app the device has set up.
+// ── Email composing ─────────────────────────────────────────
+// Each provider gets a web link (desktop / fallback) and a native-app link
+// (phones with the app installed):
+//   iOS     Gmail  -> googlegmail:///co      Yahoo -> ymail://mail/compose
+//   Android Gmail  -> intent to com.google.android.gm (falls back to web)
+//           Yahoo  -> intent to the Yahoo Mail app (falls back to web)
+//   "app"   -> mailto:, opens whatever email app the device has set up
 const MAIL_SUBJECT = "Re: Your wedding RSVP";
-function composeLinks(to, bcc, body) {
+const BULK_SUBJECT = "You're invited to our wedding 🎉";
+const bulkBody = () =>
+  `Hello,\n\nYou're invited to our wedding! 🎉\n\nOpen the invitation and RSVP here: ${SITE_URL}\n\nEnter your name when you RSVP. After that, you'll be on the guest list.\n\n${ONE_TIME_NOTE}\n\nWe can't wait to celebrate with you!`;
+
+function composeLinks(to, bcc, subject, body) {
   const e = encodeURIComponent;
+  const q = (pairs) =>
+    pairs
+      .filter(([, v]) => v)
+      .map(([k, v]) => `${k}=${e(v)}`)
+      .join("&");
+
+  const gmailWeb = `https://mail.google.com/mail/?view=cm&fs=1&to=${e(to)}&bcc=${e(bcc)}&su=${e(subject)}&body=${e(body)}`;
+  const yahooWeb = `https://compose.mail.yahoo.com/?to=${e(to)}&bcc=${e(bcc)}&subj=${e(subject)}&body=${e(body)}`;
+  const mailto = `mailto:${to}?${q([["bcc", bcc], ["subject", subject], ["body", body]])}`;
+
   return {
-    gmail: `https://mail.google.com/mail/?view=cm&fs=1&to=${e(to)}&bcc=${e(bcc)}&su=${e(MAIL_SUBJECT)}&body=${e(body)}`,
-    yahoo: `https://compose.mail.yahoo.com/?to=${e(to)}&bcc=${e(bcc)}&subj=${e(MAIL_SUBJECT)}&body=${e(body)}`,
-    app: `mailto:${to}?bcc=${e(bcc)}&subject=${e(MAIL_SUBJECT)}&body=${e(body)}`,
+    gmail: gmailWeb,
+    yahoo: yahooWeb,
+    app: mailto,
+    gmailIos: `googlegmail:///co?${q([["to", to], ["bcc", bcc], ["subject", subject], ["body", body]])}`,
+    yahooIos: `ymail://mail/compose?${q([["to", to], ["subject", subject], ["body", body]])}`,
+    gmailAndroid: `intent:${mailto}#Intent;package=com.google.android.gm;S.browser_fallback_url=${e(gmailWeb)};end`,
+    yahooAndroid: `intent:${mailto}#Intent;package=com.yahoo.mobile.client.android.mail;S.browser_fallback_url=${e(yahooWeb)};end`,
   };
 }
+
 const mailBtn = (dark) => ({
   display: "inline-flex",
   alignItems: "center",
@@ -126,12 +150,73 @@ const mailBtn = (dark) => ({
   padding: dark ? "9px 16px" : "11px 0",
   flex: dark ? undefined : 1,
   borderRadius: 999,
+  border: "none",
+  cursor: "pointer",
   background: dark ? "rgba(255,255,255,0.14)" : T.accent,
   color: dark ? "#fff" : T.accentInk,
   fontSize: 13,
   fontWeight: 700,
   textDecoration: "none",
 });
+
+function detectPlatform() {
+  const ua = navigator.userAgent || "";
+  if (/Android/i.test(ua)) return "android";
+  if (/iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1))
+    return "ios";
+  return "desktop";
+}
+
+// Opens the native app when on a phone, otherwise (or if the app isn't
+// installed) the provider's website.
+function openMail(provider, links) {
+  const platform = detectPlatform();
+  const web = provider === "gmail" ? links.gmail : links.yahoo;
+
+  if (provider === "app") {
+    window.location.href = links.app;
+    return;
+  }
+
+  if (platform === "android") {
+    window.location.href = provider === "gmail" ? links.gmailAndroid : links.yahooAndroid;
+    return;
+  }
+
+  if (platform === "ios") {
+    const native = provider === "gmail" ? links.gmailIos : links.yahooIos;
+    let left = false;
+    const onVis = () => {
+      if (document.hidden) left = true;
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.location.href = native;
+    setTimeout(() => {
+      document.removeEventListener("visibilitychange", onVis);
+      if (!left) window.location.href = web; // app not installed -> website
+    }, 1500);
+    return;
+  }
+
+  window.open(web, "_blank", "noopener,noreferrer");
+}
+
+function MailButtons({ to, bcc, subject, body, dark }) {
+  const links = composeLinks(to, bcc, subject, body);
+  return (
+    <>
+      <button type="button" onClick={() => openMail("gmail", links)} style={mailBtn(dark)}>
+        Gmail{dark && bcc ? ` ${bcc.split(",").length}` : ""}
+      </button>
+      <button type="button" onClick={() => openMail("yahoo", links)} style={mailBtn(dark)}>
+        Yahoo{dark && bcc ? ` ${bcc.split(",").length}` : ""}
+      </button>
+      <button type="button" onClick={() => openMail("app", links)} style={mailBtn(dark)}>
+        Email app
+      </button>
+    </>
+  );
+}
 
 function CopyIcon() {
   return (
@@ -313,6 +398,9 @@ function MessageModal({ guest, onClose }) {
     }
   };
 
+  // Prefilled reply so the compose window always opens with written text.
+  const replyBody = `Hi ${guest.name},\n\nThank you for your RSVP — we're so happy you'll be celebrating with us!\n\nHere is the invitation again: ${SITE_URL}\n\n${ONE_TIME_NOTE}\n\nWarm regards`;
+
   return (
     <div
       onClick={onClose}
@@ -408,16 +496,11 @@ function MessageModal({ guest, onClose }) {
           {guest.rsvpMessage || "No message left."}
         </div>
 
-        {guest.email && (() => {
-          const links = composeLinks(guest.email, "", `Hi ${guest.name},\n\n`);
-          return (
-            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-              <a href={links.gmail} target="_blank" rel="noreferrer" style={mailBtn(false)}>Gmail</a>
-              <a href={links.yahoo} target="_blank" rel="noreferrer" style={mailBtn(false)}>Yahoo</a>
-              <a href={links.app} style={mailBtn(false)}>Email app</a>
-            </div>
-          );
-        })()}
+        {guest.email && (
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <MailButtons to={guest.email} bcc="" subject={MAIL_SUBJECT} body={replyBody} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1087,7 +1170,6 @@ export default function GuestQrCodes() {
   for (let i = 0; i < selectedGuests.length; i++) {
     if (selectedGuests[i].email) selectedEmails.push(selectedGuests[i].email);
   }
-  const bulkLinks = composeLinks("", selectedEmails.join(","), "");
 
   const handleCopyEmails = async () => {
     const ok = await copyText(selectedEmails.join(", "));
@@ -1624,9 +1706,13 @@ export default function GuestQrCodes() {
           </button>
           {selectedEmails.length > 0 && (
             <>
-              <a href={bulkLinks.gmail} target="_blank" rel="noreferrer" style={mailBtn(true)}>Gmail {selectedEmails.length}</a>
-              <a href={bulkLinks.yahoo} target="_blank" rel="noreferrer" style={mailBtn(true)}>Yahoo {selectedEmails.length}</a>
-              <a href={bulkLinks.app} style={mailBtn(true)}>Email app</a>
+              <MailButtons
+                to=""
+                bcc={selectedEmails.join(",")}
+                subject={BULK_SUBJECT}
+                body={bulkBody()}
+                dark
+              />
               <button
                 onClick={handleCopyEmails}
                 style={{
