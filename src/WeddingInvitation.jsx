@@ -117,14 +117,11 @@ const GUEST_UPLOAD_URL = "https://mediahub-frontend-4tdp.vercel.app";
 const API_BASE =
   import.meta.env.VITE_GUEST_API_URL || "https://wedding-guest-backend-b9g8.onrender.com/api";
 
-const RSVP_DONE_KEY = "wi_rsvp_done_v1";
-// Entry pass handed out right after an RSVP made through the shared link.
-const MY_PASS_KEY = "wi_my_pass_v1";
-
 // Must match SITE_URL in the admin QR page so the scanner reads the same link.
 const SITE_URL = "https://wedding-invitation-taupe-seven-44.vercel.app";
 
-// Shown only when the invitation is opened from a guest's personal link.
+// Shown only when the invitation is opened from a guest's personal link,
+// or right after someone RSVPs through the shared link.
 // Same QR the admin page generates for that guest.
 function EntryPass({ token, name }) {
   const wrapRef = useRef(null);
@@ -172,6 +169,9 @@ function EntryPass({ token, name }) {
       >
         Save QR
       </button>
+      <p className="mx-auto mt-3 max-w-[260px] text-[11px] italic" style={{ color: "#7a5a2c" }}>
+        Save it now — it won't be shown again after you leave or refresh this page.
+      </p>
     </section>
   );
 }
@@ -507,8 +507,10 @@ function DressCodeSection() {
 // Open to everyone who has the single invitation link. A guest with a
 // personal token keeps their name locked; anyone else types their own name
 // and the backend adds them to the guest list when they RSVP.
+// After a successful RSVP through the shared link, "RSVP for another guest"
+// clears the form (and the pass) so several people can RSVP on one phone.
 // ─────────────────────────────────────────────────────────
-function WishesForm({ token, prefillName, onSubmitted }) {
+function WishesForm({ token, prefillName, onSubmitted, onAnother }) {
   const [name, setName] = useState(prefillName || "");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -693,9 +695,21 @@ function WishesForm({ token, prefillName, onSubmitted }) {
         </motion.button>
 
         {status === "sent" && (
-          <p className="text-center text-xs" style={{ color: "#4a0a12" }}>
-            The raven has flown — your response has been received 🕊
-          </p>
+          <div className="text-center">
+            <p className="text-xs" style={{ color: "#4a0a12" }}>
+              The raven has flown — your response has been received 🕊
+            </p>
+            {!token && (
+              <button
+                type="button"
+                onClick={onAnother}
+                className="mt-3 rounded-full px-5 py-2 text-[10px] uppercase"
+                style={{ letterSpacing: "0.22em", border: "1px solid #7a1220", color: "#7a1220", background: "transparent" }}
+              >
+                RSVP for another guest
+              </button>
+            )}
+          </div>
         )}
         {status === "error" && (
           <p className="text-center text-xs font-semibold" style={{ color: "#7a1220" }}>
@@ -1242,18 +1256,14 @@ export default function WeddingInvitation() {
   const [guestType, setGuestType] = useState("");
   // none = no token in the URL | checking | valid | invalid
   const [tokenStatus, setTokenStatus] = useState("none");
-  const [rsvpDone, setRsvpDone] = useState(
-    () => typeof window !== "undefined" && localStorage.getItem(RSVP_DONE_KEY) === "1"
-  );
+  // Session-only on purpose: nothing is stored in the browser, so a refresh
+  // gives the next person on the same phone a clean form and no old QR.
+  const [rsvpDone, setRsvpDone] = useState(false);
   const [showReminder, setShowReminder] = useState(false);
   // Pass created by RSVPing through the shared link: { token, name }
-  const [myPass, setMyPass] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(MY_PASS_KEY) || "null");
-    } catch {
-      return null;
-    }
-  });
+  const [myPass, setMyPass] = useState(null);
+  // Bumped to remount the RSVP form with empty fields.
+  const [formKey, setFormKey] = useState(0);
   const audioRef = useRef(null);
   const countdown = useCountdown(EVENT.weddingDateTimeISO);
 
@@ -1275,6 +1285,15 @@ export default function WeddingInvitation() {
   // Identify the guest from ?token=… and verify it with the server.
   // (The old ?guest=Name shortcut is removed — anyone could type a name.)
   useEffect(() => {
+    // Clean up keys saved by the previous version so old QR codes
+    // don't linger on phones that already RSVP'd.
+    try {
+      localStorage.removeItem("wi_my_pass_v1");
+      localStorage.removeItem("wi_rsvp_done_v1");
+    } catch {
+      /* storage unavailable */
+    }
+
     const token = new URLSearchParams(window.location.search).get("token");
     if (!token) return;
 
@@ -1327,21 +1346,21 @@ export default function WeddingInvitation() {
 
   const handleRsvpSubmitted = (body, attending) => {
     // The server returns the new guest's token when someone RSVPs through the
-    // shared link — keep it so their QR shows up right away (and on revisits).
+    // shared link — keep it in memory so their QR shows right away.
     const newToken = body?.token || body?.guest?.token;
     const newName = body?.name || body?.guest?.name || "";
     if (newToken && attending !== "no" && !hasPersonalLink) {
-      const pass = { token: newToken, name: newName };
-      setMyPass(pass);
-      try {
-        localStorage.setItem(MY_PASS_KEY, JSON.stringify(pass));
-      } catch {
-        /* storage unavailable */
-      }
+      setMyPass({ token: newToken, name: newName });
     }
-    localStorage.setItem(RSVP_DONE_KEY, "1");
     setRsvpDone(true);
     setShowReminder(false);
+  };
+
+  // Lets several people RSVP from one phone: clears the pass and the form.
+  const handleAnotherGuest = () => {
+    setMyPass(null);
+    setRsvpDone(false);
+    setFormKey((k) => k + 1);
   };
 
   useEffect(() => {
@@ -1611,15 +1630,18 @@ export default function WeddingInvitation() {
               <RsvpLocked checking />
             ) : (
               <WishesForm
+                key={formKey}
                 token={hasPersonalLink ? guestToken : ""}
                 prefillName={guestName}
                 onSubmitted={handleRsvpSubmitted}
+                onAnother={handleAnotherGuest}
               />
             )}
           </div>
         </section>
 
-        {/* ENTRY PASS — only for verified guests with a personal link (not physical-card guests) */}
+        {/* ENTRY PASS — only for verified guests with a personal link (not physical-card guests),
+            or for someone who just RSVP'd through the shared link (kept in memory only) */}
         {hasPersonalLink && guestType !== "physical" ? (
           <>
             <SectionDivider symbol="✦" />
