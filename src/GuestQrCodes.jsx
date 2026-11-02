@@ -7,20 +7,15 @@ const API_BASE =
 const ADMIN_KEY_STORAGE = "mediahub_wedding_admin_key";
 const GROUPS_STORAGE = "mediahub_wedding_guest_groups";
 
-// Shown to every guest together with their QR code / link.
+// Shown to every guest together with their QR code.
 const ONE_TIME_NOTE =
   "Please note: this QR code can be used only once — it is scanned at the entrance and will not work a second time. Do not share it with anyone else.";
 
-// Personal invitation link for one guest (same link the QR code points to).
-const guestLink = (g) => `${SITE_URL}/?token=${encodeURIComponent(g.token)}`;
-
-// Text to paste into a WhatsApp group: one guest per line.
-//   names only      ->  "1. John Doe"
-//   names + links   ->  "1. John Doe: https://…/?token=…"
-function formatGuestList(list, withLinks) {
-  return list
-    .map((g, i) => `${i + 1}. ${g.name}${withLinks ? `: ${guestLink(g)}` : ""}`)
-    .join("\n");
+// Text to paste into a WhatsApp group: one guest name per line.
+// Personal QR links (?token=…) are intentionally never included in any text,
+// because anyone who opens one can see that guest's QR code.
+function formatGuestList(list) {
+  return list.map((g, i) => `${i + 1}. ${g.name}`).join("\n");
 }
 
 async function copyText(text) {
@@ -427,6 +422,7 @@ function MessageModal({ guest, onClose }) {
   };
 
   // Prefilled reply so the compose window always opens with written text.
+  // Uses only the general invitation link — never a personal token link.
   const replyBody = `Hi ${guest.name},\n\nThank you for your RSVP — we're so happy you'll be celebrating with us!\n\nHere is the invitation again: ${SITE_URL}\n\n${ONE_TIME_NOTE}\n\nWarm regards`;
 
   return (
@@ -537,14 +533,17 @@ function MessageModal({ guest, onClose }) {
 // ── QR Modal ────────────────────────────────────────────────
 function QrModal({ guest, onClose }) {
   const canvasWrapperRef = useRef(null);
+  // Used only to draw the QR image. Never displayed or sent as text.
   const guestUrl = `${SITE_URL}/?token=${encodeURIComponent(guest.token)}`;
-  const [shareState, setShareState] = useState("idle"); // idle | sharing | copied | error
+  const [shareState, setShareState] = useState("idle"); // idle | sharing | saved | error
+
+  const fileName = `qr-${guest.name.replace(/\s+/g, "_")}.png`;
 
   const handleDownload = () => {
     const canvas = canvasWrapperRef.current.querySelector("canvas");
     if (!canvas) return;
     const link = document.createElement("a");
-    link.download = `qr-${guest.name.replace(/\s+/g, "_")}.png`;
+    link.download = fileName;
     link.href = canvas.toDataURL("image/png");
     link.click();
   };
@@ -553,23 +552,18 @@ function QrModal({ guest, onClose }) {
     const canvas = canvasWrapperRef.current.querySelector("canvas");
     setShareState("sharing");
 
-    // Some apps (esp. when sharing an image file) drop the separate `url`
-    // field, so the link is folded into the text itself to make sure it
-    // always goes along with the QR code.
-    const shareText = `You're invited! 🎉 Here's your QR code for check-in at the wedding — just show this at the entrance.\n\n⚠️ ${ONE_TIME_NOTE}\n\nWedding invitation link: ${guestUrl}`;
+    // No link in the text — only the QR image goes out.
+    const shareText = `You're invited! 🎉 Here's your QR code for check-in at the wedding — just show this at the entrance.\n\n⚠️ ${ONE_TIME_NOTE}`;
 
     try {
-      // Prefer sharing the actual QR image (WhatsApp, etc. show it as a photo)
       if (canvas && navigator.canShare) {
         const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
         if (blob) {
-          const file = new File([blob], `qr-${guest.name.replace(/\s+/g, "_")}.png`, {
-            type: "image/png",
-          });
+          const file = new File([blob], fileName, { type: "image/png" });
           if (navigator.canShare({ files: [file] })) {
             await navigator.share({
               files: [file],
-              title: `${guest.name}'s wedding invitation & check-in QR code`,
+              title: `${guest.name}'s wedding check-in QR code`,
               text: shareText,
             });
             setShareState("idle");
@@ -578,41 +572,24 @@ function QrModal({ guest, onClose }) {
         }
       }
 
-      // Fall back to sharing just the link
-      if (navigator.share) {
-        await navigator.share({
-          title: `${guest.name}'s wedding invitation & check-in QR code`,
-          text: shareText,
-          url: guestUrl,
-        });
-        setShareState("idle");
-        return;
-      }
-
-      // Desktop / unsupported browsers: copy the message + link instead
-      await navigator.clipboard.writeText(`${shareText}`);
-      setShareState("copied");
+      // Can't share an image here (e.g. desktop): save the PNG instead of a link.
+      handleDownload();
+      setShareState("saved");
       setTimeout(() => setShareState("idle"), 1800);
     } catch (err) {
       if (err && err.name === "AbortError") {
         setShareState("idle"); // user cancelled the native share sheet
         return;
       }
-      try {
-        await navigator.clipboard.writeText(shareText);
-        setShareState("copied");
-        setTimeout(() => setShareState("idle"), 1800);
-      } catch {
-        setShareState("error");
-        setTimeout(() => setShareState("idle"), 1800);
-      }
+      setShareState("error");
+      setTimeout(() => setShareState("idle"), 1800);
     }
   };
 
   const shareLabel = {
-    idle: "Share",
+    idle: "Share QR image",
     sharing: "Sharing…",
-    copied: "Message copied!",
+    saved: "QR image saved!",
     error: "Couldn't share",
   }[shareState];
 
@@ -694,9 +671,6 @@ function QrModal({ guest, onClose }) {
           <QRCodeCanvas value={guestUrl} size={220} bgColor={T.soft} fgColor={T.ink} />
         </div>
         <p style={{ marginTop: 16, fontWeight: 700, fontSize: 16, color: T.ink }}>{guest.name}</p>
-        <p style={{ fontSize: 11, color: T.sub, wordBreak: "break-all", marginTop: 4 }}>
-          {guestUrl}
-        </p>
         <p
           style={{
             fontSize: 11,
@@ -969,7 +943,7 @@ export default function GuestQrCodes() {
   });
   const [activeGroup, setActiveGroup] = useState("");
   const [selected, setSelected] = useState(() => new Set());
-  const [copied, setCopied] = useState(""); // "" | "names" | "links" | "error"
+  const [copied, setCopied] = useState(""); // "" | "names" | "emails" | "error"
   const [inviteCopied, setInviteCopied] = useState(""); // "" | "ok" | "error"
 
   useEffect(() => {
@@ -1231,12 +1205,10 @@ export default function GuestQrCodes() {
     setSelected(new Set(guests.filter((g) => groupsMap[g._id] === label).map((g) => g._id)));
   };
 
-  const handleCopy = async (kind) => {
-    const list = formatGuestList(selectedGuests, kind === "links");
-    // Personal links go out with the one-time reminder.
-    const text = kind === "links" ? `${list}\n\n${ONE_TIME_NOTE}` : list;
-    const ok = await copyText(text);
-    setCopied(ok ? kind : "error");
+  // Copies the ticked guests' names only (no personal links).
+  const handleCopy = async () => {
+    const ok = await copyText(formatGuestList(selectedGuests));
+    setCopied(ok ? "names" : "error");
     setTimeout(() => setCopied(""), 1800);
   };
 
@@ -1695,7 +1667,7 @@ export default function GuestQrCodes() {
             {selectedGuests.length} selected
           </span>
           <button
-            onClick={() => handleCopy("names")}
+            onClick={handleCopy}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -1703,34 +1675,15 @@ export default function GuestQrCodes() {
               padding: "9px 16px",
               borderRadius: 999,
               border: "none",
-              background: copied === "names" ? T.goodBg : "rgba(255,255,255,0.14)",
-              color: copied === "names" ? T.good : "#fff",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            {copied === "names" ? <CheckIcon /> : <CopyIcon />}
-            {copied === "names" ? "Copied!" : "Copy names"}
-          </button>
-          <button
-            onClick={() => handleCopy("links")}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "9px 16px",
-              borderRadius: 999,
-              border: "none",
-              background: copied === "links" ? T.goodBg : T.accent,
-              color: copied === "links" ? T.good : T.accentInk,
+              background: copied === "names" ? T.goodBg : T.accent,
+              color: copied === "names" ? T.good : T.accentInk,
               fontSize: 13,
               fontWeight: 700,
               cursor: "pointer",
             }}
           >
-            {copied === "links" ? <CheckIcon /> : <CopyIcon />}
-            {copied === "links" ? "Copied!" : "Copy names + links"}
+            {copied === "names" ? <CheckIcon /> : <CopyIcon />}
+            {copied === "names" ? "Copied!" : "Copy names"}
           </button>
           {selectedEmails.length > 0 && (
             <>
