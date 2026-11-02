@@ -113,7 +113,7 @@ function EyeIcon({ off }) {
 const MAIL_SUBJECT = "Re: Your wedding RSVP";
 const BULK_SUBJECT = "You're invited to our wedding 🎉";
 const bulkBody = () =>
-  `Hello,\n\nYou're invited to our wedding! 🎉\n\nOpen the invitation and RSVP here: ${SITE_URL}\n\nEnter your name when you RSVP. After that, you'll be on the guest list.\n\n${ONE_TIME_NOTE}\n\nWe can't wait to celebrate with you!`;
+  `Hello,\n\nYou're invited to our wedding! 🎉\n\nYour personal QR code for entry is sent to you separately. Please keep it ready and show it at the entrance.\n\n${ONE_TIME_NOTE}\n\nWe can't wait to celebrate with you!`;
 
 function composeLinks(to, bcc, subject, body) {
   const e = encodeURIComponent;
@@ -422,8 +422,9 @@ function MessageModal({ guest, onClose }) {
   };
 
   // Prefilled reply so the compose window always opens with written text.
-  // Uses only the general invitation link — never a personal token link.
-  const replyBody = `Hi ${guest.name},\n\nThank you for your RSVP — we're so happy you'll be celebrating with us!\n\nHere is the invitation again: ${SITE_URL}\n\n${ONE_TIME_NOTE}\n\nWarm regards`;
+  // No links at all. The guest's QR code is attached to the email by hand
+  // (download it from the QR window first).
+  const replyBody = `Hi ${guest.name},\n\nThank you for your RSVP — we're so happy you'll be celebrating with us!\n\nYour personal QR code for entry is attached to this email. Please show it at the entrance.\n\n${ONE_TIME_NOTE}\n\nWarm regards`;
 
   return (
     <div
@@ -1215,7 +1216,7 @@ export default function GuestQrCodes() {
   // One message for everybody: the single invitation link. Guests open it and
   // RSVP with their own name — they then appear in the table below.
   const handleCopyInvite = async () => {
-    const text = `You're invited to our wedding! 🎉\n\nOpen the invitation and RSVP here: ${SITE_URL}\n\nEnter your name when you RSVP. After that, you'll be on the guest list.\n\n${ONE_TIME_NOTE}`;
+    const text = `You're invited to our wedding! 🎉\n\nYour personal QR code for entry is sent with this message. Please keep it ready and show it at the entrance.\n\n${ONE_TIME_NOTE}`;
     const ok = await copyText(text);
     setInviteCopied(ok ? "ok" : "error");
     setTimeout(() => setInviteCopied(""), 1800);
@@ -1338,24 +1339,11 @@ export default function GuestQrCodes() {
         {canUse && (
           <Card style={{ marginBottom: 18 }}>
             <h2 style={{ color: T.ink, fontSize: 16, margin: "0 0 6px", fontWeight: 700 }}>
-              Invitation link for everyone
+              Invitation message (no link)
             </h2>
             <p style={{ color: T.sub, fontSize: 13, margin: "0 0 12px", lineHeight: 1.5 }}>
-              Send this one link to all your guests. Anyone who RSVPs is added to the guest list below
-              automatically with the name they enter.
-            </p>
-            <p
-              style={{
-                fontSize: 12,
-                color: T.ink,
-                background: T.soft,
-                borderRadius: 12,
-                padding: "10px 14px",
-                margin: "0 0 12px",
-                wordBreak: "break-all",
-              }}
-            >
-              {SITE_URL}
+              Copy this message and send it together with the guest's QR image. Use the QR "View"
+              button in the table to share or download each guest's QR code.
             </p>
             <button
               onClick={handleCopyInvite}
