@@ -460,9 +460,9 @@ function MessageModal({ guest, onClose }) {
   };
 
   // Prefilled reply so the compose window always opens with written text.
-  // No links at all. The guest's QR code is attached to the email by hand
-  // (download it from the QR window first).
-  const replyBody = `Hi ${guest.name},\n\nThank you for your RSVP — we're so happy you'll be celebrating with us!\n\nYour personal QR code for entry is attached to this email. Please show it at the entrance.\n\n${ONE_TIME_NOTE}\n\nWarm regards`;
+  // No links at all. The guest's QR code is shown below — copy or download it
+  // and paste/attach it in the email before sending.
+  const replyBody = `Hi ${guest.name},\n\nThank you for your RSVP — we're so happy you'll be celebrating with us!\n\nYour personal QR code for entry is below — please keep it ready and show it at the entrance.\n\n${ONE_TIME_NOTE}\n\nWarm regards`;
 
   return (
     <div
@@ -557,6 +557,55 @@ function MessageModal({ guest, onClose }) {
           }}
         >
           {guest.rsvpMessage || "No message left."}
+        </div>
+
+        {/* QR code — copy or download it, then paste/attach it in the email */}
+        <div
+          ref={qrRef}
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            padding: 16,
+            background: T.soft,
+            borderRadius: 16,
+            marginTop: 14,
+          }}
+        >
+          <QRCodeCanvas value={qrValue} size={180} bgColor={T.soft} fgColor={T.ink} />
+        </div>
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          <button
+            onClick={handleQrCopy}
+            style={{
+              flex: 1,
+              padding: "9px 0",
+              borderRadius: 999,
+              border: "none",
+              background: qrState === "copied" ? T.goodBg : T.accent,
+              color: qrState === "copied" ? T.good : T.accentInk,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            {qrState === "copied" ? "QR copied!" : qrState === "error" ? "Copy failed" : "Copy QR image"}
+          </button>
+          <button
+            onClick={handleQrDownload}
+            style={{
+              flex: 1,
+              padding: "9px 0",
+              borderRadius: 999,
+              border: "none",
+              background: qrState === "saved" ? T.goodBg : T.dark,
+              color: qrState === "saved" ? T.good : "#fff",
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            {qrState === "saved" ? "Saved!" : "Download PNG"}
+          </button>
         </div>
 
         {guest.email && (
