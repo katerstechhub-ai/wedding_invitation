@@ -12,8 +12,7 @@ const ONE_TIME_NOTE =
   "Please note: this QR code can be used only once — it is scanned at the entrance and will not work a second time. Do not share it with anyone else.";
 
 // Text to paste into a WhatsApp group: one guest name per line.
-// Personal QR links (?token=…) are intentionally never included in any text,
-// because anyone who opens one can see that guest's QR code.
+// Personal QR links are only sent in the individual email, not bulk text.
 function formatGuestList(list) {
   return list.map((g, i) => `${i + 1}. ${g.name}`).join("\n");
 }
@@ -23,7 +22,6 @@ async function copyText(text) {
     await navigator.clipboard.writeText(text);
     return true;
   } catch {
-    // Fallback for browsers/contexts where the clipboard API is blocked
     try {
       const ta = document.createElement("textarea");
       ta.value = text;
@@ -40,8 +38,6 @@ async function copyText(text) {
   }
 }
 
-// Copies a canvas (the QR code) to the clipboard as a PNG image, so it can be
-// pasted straight into WhatsApp, an email body, etc.
 async function copyCanvasImage(canvas) {
   try {
     if (!canvas || !navigator.clipboard || !window.ClipboardItem) return false;
@@ -84,8 +80,6 @@ const T = {
     "-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif",
 };
 
-// Names shared by more than one guest (e.g. two people RSVP with the same
-// name). Those rows get a small tag so they can be told apart.
 function findDuplicateNames(guests) {
   const counts = {};
   for (let i = 0; i < guests.length; i++) {
@@ -126,12 +120,6 @@ function EyeIcon({ off }) {
 }
 
 // ── Email composing ─────────────────────────────────────────
-// Each provider gets a web link (desktop / fallback) and a native-app link
-// (phones with the app installed):
-//   iOS     Gmail  -> googlegmail:///co      Yahoo -> ymail://mail/compose
-//   Android Gmail  -> intent to com.google.android.gm (falls back to web)
-//           Yahoo  -> intent to the Yahoo Mail app (falls back to web)
-//   "app"   -> mailto:, opens whatever email app the device has set up
 const MAIL_SUBJECT = "Re: Your wedding RSVP";
 const BULK_SUBJECT = "You're invited to our wedding 🎉";
 const bulkBody = () =>
@@ -184,8 +172,6 @@ function detectPlatform() {
   return "desktop";
 }
 
-// Opens the native app when on a phone, otherwise (or if the app isn't
-// installed) the provider's website.
 function openMail(provider, links) {
   const platform = detectPlatform();
   const web = provider === "gmail" ? links.gmail : links.yahoo;
@@ -217,7 +203,7 @@ function openMail(provider, links) {
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("pagehide", mark);
       window.removeEventListener("blur", mark);
-      if (!left) window.location.href = web; // app not installed -> website
+      if (!left) window.location.href = web;
     }, 2500);
     return;
   }
@@ -229,8 +215,6 @@ function MailButtons({ to, bcc, subject, body, dark }) {
   const links = composeLinks(to, bcc, subject, body);
   const [msgCopied, setMsgCopied] = useState(false);
 
-  // Some mail apps drop the prefilled text, so the message can also be copied
-  // and pasted into the email by hand.
   const handleCopyMessage = async () => {
     const ok = await copyText(body);
     setMsgCopied(ok);
@@ -349,9 +333,6 @@ function toneFor(attending) {
   return "warn";
 }
 
-// Digital (QR) guests vs. guests carrying a printed physical invitation
-// card. Card guests still get a row/token, but nobody's expected to
-// scan anything for them — they're checked in by name.
 function guestTypeLabel(guestType) {
   return guestType === "physical" ? "Card" : "QR";
 }
@@ -359,7 +340,7 @@ function guestTypeTone(guestType) {
   return guestType === "physical" ? "warn" : "muted";
 }
 
-// ── Confirm Modal (replaces window.confirm) ────────────────
+// ── Confirm Modal ──────────────────────────────────────────
 function ConfirmModal({ title, body, confirmLabel, onConfirm, onCancel }) {
   return (
     <div
@@ -430,22 +411,6 @@ function ConfirmModal({ title, body, confirmLabel, onConfirm, onCancel }) {
 // ── Message Modal ───────────────────────────────────────────
 function MessageModal({ guest, onClose }) {
   const [copied, setCopied] = useState(false);
-  const qrRef = useRef(null);
-  const [qrState, setQrState] = useState(""); // "" | "copied" | "saved" | "error"
-  const qrFileName = `qr-${guest.name.replace(/\s+/g, "_")}.png`;
-  // Used only to draw the QR image. Never shown or sent as text.
-  const qrValue = `${SITE_URL}/?token=${encodeURIComponent(guest.token)}`;
-
-  const handleQrCopy = async () => {
-    const ok = await copyCanvasImage(qrRef.current && qrRef.current.querySelector("canvas"));
-    setQrState(ok ? "copied" : "error");
-    setTimeout(() => setQrState(""), 2000);
-  };
-  const handleQrDownload = () => {
-    downloadCanvas(qrRef.current && qrRef.current.querySelector("canvas"), qrFileName);
-    setQrState("saved");
-    setTimeout(() => setQrState(""), 2000);
-  };
 
   const handleCopyEmail = async (e) => {
     e.stopPropagation();
@@ -459,10 +424,10 @@ function MessageModal({ guest, onClose }) {
     }
   };
 
-  // Prefilled reply so the compose window always opens with written text.
-  // No links at all. The guest's QR code is shown below — copy or download it
-  // and paste/attach it in the email before sending.
-  const replyBody = `Hi ${guest.name},\n\nThank you for your RSVP — we're so happy you'll be celebrating with us!\n\nYour personal QR code for entry is below — please keep it ready and show it at the entrance.\n\n${ONE_TIME_NOTE}\n\nWarm regards`;
+  // Reply email now contains a real working link the guest can open to see
+  // their own QR code. This is the only reliable way to deliver it via email.
+  const qrLink = `${SITE_URL}/#qr/${encodeURIComponent(guest.token)}`;
+  const replyBody = `Hi ${guest.name},\n\nThank you for your RSVP — we're so happy you'll be celebrating with us!\n\nHere's your personal QR code for entry:\n${qrLink}\n\nOpen the link at the entrance, or open it now and save the QR image to your phone.\n\n${ONE_TIME_NOTE}\n\nWarm regards`;
 
   return (
     <div
@@ -559,55 +524,6 @@ function MessageModal({ guest, onClose }) {
           {guest.rsvpMessage || "No message left."}
         </div>
 
-        {/* QR code — copy or download it, then paste/attach it in the email */}
-        <div
-          ref={qrRef}
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            padding: 16,
-            background: T.soft,
-            borderRadius: 16,
-            marginTop: 14,
-          }}
-        >
-          <QRCodeCanvas value={qrValue} size={180} bgColor={T.soft} fgColor={T.ink} />
-        </div>
-        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-          <button
-            onClick={handleQrCopy}
-            style={{
-              flex: 1,
-              padding: "9px 0",
-              borderRadius: 999,
-              border: "none",
-              background: qrState === "copied" ? T.goodBg : T.accent,
-              color: qrState === "copied" ? T.good : T.accentInk,
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            {qrState === "copied" ? "QR copied!" : qrState === "error" ? "Copy failed" : "Copy QR image"}
-          </button>
-          <button
-            onClick={handleQrDownload}
-            style={{
-              flex: 1,
-              padding: "9px 0",
-              borderRadius: 999,
-              border: "none",
-              background: qrState === "saved" ? T.goodBg : T.dark,
-              color: qrState === "saved" ? T.good : "#fff",
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            {qrState === "saved" ? "Saved!" : "Download PNG"}
-          </button>
-        </div>
-
         {guest.email && (
           <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
             <MailButtons to={guest.email} bcc="" subject={MAIL_SUBJECT} body={replyBody} />
@@ -621,9 +537,8 @@ function MessageModal({ guest, onClose }) {
 // ── QR Modal ────────────────────────────────────────────────
 function QrModal({ guest, onClose }) {
   const canvasWrapperRef = useRef(null);
-  // Used only to draw the QR image. Never displayed or sent as text.
   const guestUrl = `${SITE_URL}/?token=${encodeURIComponent(guest.token)}`;
-  const [shareState, setShareState] = useState("idle"); // idle | sharing | saved | error
+  const [shareState, setShareState] = useState("idle");
 
   const fileName = `qr-${guest.name.replace(/\s+/g, "_")}.png`;
 
@@ -640,7 +555,6 @@ function QrModal({ guest, onClose }) {
     const canvas = canvasWrapperRef.current.querySelector("canvas");
     setShareState("sharing");
 
-    // No link in the text — only the QR image goes out.
     const shareText = `You're invited! 🎉 Here's your QR code for check-in at the wedding — just show this at the entrance.\n\n⚠️ ${ONE_TIME_NOTE}`;
 
     try {
@@ -660,13 +574,12 @@ function QrModal({ guest, onClose }) {
         }
       }
 
-      // Can't share an image here (e.g. desktop): save the PNG instead of a link.
       handleDownload();
       setShareState("saved");
       setTimeout(() => setShareState("idle"), 1800);
     } catch (err) {
       if (err && err.name === "AbortError") {
-        setShareState("idle"); // user cancelled the native share sheet
+        setShareState("idle");
         return;
       }
       setShareState("error");
@@ -819,7 +732,7 @@ function QrModal({ guest, onClose }) {
 
 // ── Guest table ─────────────────────────────────────────────
 function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage, busyId, emptyMessage, selected, onToggleSelect, onToggleAll, groupsMap }) {
-  const [pendingDelete, setPendingDelete] = useState(null); // guest pending delete confirmation
+  const [pendingDelete, setPendingDelete] = useState(null);
 
   if (guests.length === 0)
     return (
@@ -976,7 +889,6 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
                 </td>
               </tr>
             ))}
-            {/* row spacer */}
             <tr><td colSpan={9} style={{ height: 6 }} /></tr>
           </tbody>
         </table>
@@ -1002,7 +914,7 @@ export default function GuestQrCodes() {
   const [quickName, setQuickName] = useState("");
   const [bulkText, setBulkText] = useState("");
   const [bulkOpen, setBulkOpen] = useState(false);
-  const [guestType, setGuestType] = useState("digital"); // "digital" | "physical" — applies to the next guest(s) added
+  const [guestType, setGuestType] = useState("digital");
   const [guests, setGuests] = useState([]);
   const [tableSearch, setTableSearch] = useState("");
   const [modalGuest, setModalGuest] = useState(null);
@@ -1019,8 +931,6 @@ export default function GuestQrCodes() {
   const [error, setError] = useState("");
   const [pendingSignOut, setPendingSignOut] = useState(false);
 
-  // Groups: an optional label given when guests are bulk-added (e.g. the name
-  // of their WhatsApp group). Stored in this browser only, keyed by guest id.
   const [groupLabel, setGroupLabel] = useState("");
   const [groupsMap, setGroupsMap] = useState(() => {
     try {
@@ -1031,8 +941,8 @@ export default function GuestQrCodes() {
   });
   const [activeGroup, setActiveGroup] = useState("");
   const [selected, setSelected] = useState(() => new Set());
-  const [copied, setCopied] = useState(""); // "" | "names" | "emails" | "error"
-  const [inviteCopied, setInviteCopied] = useState(""); // "" | "ok" | "error"
+  const [copied, setCopied] = useState("");
+  const [inviteCopied, setInviteCopied] = useState("");
 
   useEffect(() => {
     try {
@@ -1112,9 +1022,6 @@ export default function GuestQrCodes() {
     }
   };
 
-  // Quiet polling so this table stays in sync with check-ins happening on
-  // the scanner page, and with guests who RSVP through the single invitation
-  // link (they show up here on their own), without needing a websocket.
   useEffect(() => {
     if (keyStatus !== "valid") return;
     const id = setInterval(fetchGuests, 6000);
@@ -1122,8 +1029,6 @@ export default function GuestQrCodes() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [keyStatus]);
 
-  // `type` defaults to whatever's currently selected in the toggle, so both
-  // the quick-add form and the bulk-add box use the same selection.
   const addNames = async (names, type = guestType, label = "") => {
     if (names.length === 0) return;
     const before = new Set(guests.map((g) => g._id));
@@ -1140,8 +1045,6 @@ export default function GuestQrCodes() {
       }
       const data = await fetchGuests();
 
-      // Tag the freshly added guests with the group name, select them and
-      // show just that group, so one tap on "Copy" gives the whole batch.
       if (label && data) {
         const added = data.filter((g) => !before.has(g._id));
         if (added.length) {
@@ -1254,7 +1157,6 @@ export default function GuestQrCodes() {
   });
   const groupNames = Object.keys(groupCounts);
 
-  // Guests to copy = the ticked ones, in the order they appear in the list
   const selectedGuests = guests.filter((g) => selected.has(g._id));
   const selectedEmails = [];
   for (let i = 0; i < selectedGuests.length; i++) {
@@ -1282,7 +1184,6 @@ export default function GuestQrCodes() {
       return next;
     });
 
-  // Tapping a group chip shows that group and ticks all its guests.
   const handlePickGroup = (label) => {
     if (!label || label === activeGroup) {
       setActiveGroup("");
@@ -1293,15 +1194,12 @@ export default function GuestQrCodes() {
     setSelected(new Set(guests.filter((g) => groupsMap[g._id] === label).map((g) => g._id)));
   };
 
-  // Copies the ticked guests' names only (no personal links).
   const handleCopy = async () => {
     const ok = await copyText(formatGuestList(selectedGuests));
     setCopied(ok ? "names" : "error");
     setTimeout(() => setCopied(""), 1800);
   };
 
-  // One message for everybody: the single invitation link. Guests open it and
-  // RSVP with their own name — they then appear in the table below.
   const handleCopyInvite = async () => {
     const text = `You're invited to our wedding! 🎉\n\nYour personal QR code for entry is sent with this message. Please keep it ready and show it at the entrance.\n\n${ONE_TIME_NOTE}`;
     const ok = await copyText(text);
@@ -1422,15 +1320,15 @@ export default function GuestQrCodes() {
           )}
         </Card>
 
-        {/* Single invitation link — one message for everybody */}
+        {/* Invitation message */}
         {canUse && (
           <Card style={{ marginBottom: 18 }}>
             <h2 style={{ color: T.ink, fontSize: 16, margin: "0 0 6px", fontWeight: 700 }}>
               Invitation message (no link)
             </h2>
             <p style={{ color: T.sub, fontSize: 13, margin: "0 0 12px", lineHeight: 1.5 }}>
-              Copy this message and send it together with the guest's QR image. Use the QR "View"
-              button in the table to share or download each guest's QR code.
+              Copy this message and send it together with the guest's QR image. Use the RSVP pill
+              in the table to open the email reply with their personal QR link.
             </p>
             <button
               onClick={handleCopyInvite}
@@ -1481,8 +1379,6 @@ export default function GuestQrCodes() {
         <Card>
           <h2 style={{ color: T.ink, fontSize: 16, margin: "0 0 14px", fontWeight: 700 }}>Add a guest</h2>
 
-          {/* Guest type toggle — applies to whatever's added below, quick-add
-              or bulk-add, until changed again. */}
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 11, color: T.sub, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>
               Guest type
