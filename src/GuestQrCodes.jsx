@@ -138,8 +138,8 @@ function composeLinks(to, bcc, subject, body) {
     app: mailto,
     gmailIos: `googlegmail:///co?${q([["to", to], ["bcc", bcc], ["subject", subject], ["body", body]])}`,
     yahooIos: `ymail://mail/compose?${q([["to", to], ["subject", subject], ["body", body]])}`,
-    gmailAndroid: `intent:${mailto}#Intent;package=com.google.android.gm;S.browser_fallback_url=${e(gmailWeb)};end`,
-    yahooAndroid: `intent:${mailto}#Intent;package=com.yahoo.mobile.client.android.mail;S.browser_fallback_url=${e(yahooWeb)};end`,
+    gmailAndroid: `intent://${to}?${q([["bcc", bcc], ["subject", subject], ["body", body]])}#Intent;scheme=mailto;package=com.google.android.gm;S.browser_fallback_url=${e(gmailWeb)};end`,
+    yahooAndroid: `intent://${to}?${q([["bcc", bcc], ["subject", subject], ["body", body]])}#Intent;scheme=mailto;package=com.yahoo.mobile.client.android.mail;S.browser_fallback_url=${e(yahooWeb)};end`,
   };
 }
 
@@ -186,15 +186,22 @@ function openMail(provider, links) {
   if (platform === "ios") {
     const native = provider === "gmail" ? links.gmailIos : links.yahooIos;
     let left = false;
+    const mark = () => {
+      left = true;
+    };
     const onVis = () => {
       if (document.hidden) left = true;
     };
     document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pagehide", mark);
+    window.addEventListener("blur", mark);
     window.location.href = native;
     setTimeout(() => {
       document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pagehide", mark);
+      window.removeEventListener("blur", mark);
       if (!left) window.location.href = web; // app not installed -> website
-    }, 1500);
+    }, 2500);
     return;
   }
 
@@ -203,6 +210,16 @@ function openMail(provider, links) {
 
 function MailButtons({ to, bcc, subject, body, dark }) {
   const links = composeLinks(to, bcc, subject, body);
+  const [msgCopied, setMsgCopied] = useState(false);
+
+  // Some mail apps drop the prefilled text, so the message can also be copied
+  // and pasted into the email by hand.
+  const handleCopyMessage = async () => {
+    const ok = await copyText(body);
+    setMsgCopied(ok);
+    setTimeout(() => setMsgCopied(false), 1800);
+  };
+
   return (
     <>
       <button type="button" onClick={() => openMail("gmail", links)} style={mailBtn(dark)}>
@@ -213,6 +230,17 @@ function MailButtons({ to, bcc, subject, body, dark }) {
       </button>
       <button type="button" onClick={() => openMail("app", links)} style={mailBtn(dark)}>
         Email app
+      </button>
+      <button
+        type="button"
+        onClick={handleCopyMessage}
+        style={{
+          ...mailBtn(dark),
+          background: msgCopied ? T.goodBg : dark ? "rgba(255,255,255,0.14)" : T.soft,
+          color: msgCopied ? T.good : dark ? "#fff" : T.ink,
+        }}
+      >
+        {msgCopied ? "Copied!" : "Copy message"}
       </button>
     </>
   );
