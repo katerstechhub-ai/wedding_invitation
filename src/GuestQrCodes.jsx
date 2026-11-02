@@ -40,6 +40,28 @@ async function copyText(text) {
   }
 }
 
+// Copies a canvas (the QR code) to the clipboard as a PNG image, so it can be
+// pasted straight into WhatsApp, an email body, etc.
+async function copyCanvasImage(canvas) {
+  try {
+    if (!canvas || !navigator.clipboard || !window.ClipboardItem) return false;
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) return false;
+    await navigator.clipboard.write([new window.ClipboardItem({ "image/png": blob })]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function downloadCanvas(canvas, fileName) {
+  if (!canvas) return;
+  const link = document.createElement("a");
+  link.download = fileName;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
 // ── Design tokens ───────────────────────────────────────────
 const T = {
   bg: "#efeae0",
@@ -408,6 +430,22 @@ function ConfirmModal({ title, body, confirmLabel, onConfirm, onCancel }) {
 // ── Message Modal ───────────────────────────────────────────
 function MessageModal({ guest, onClose }) {
   const [copied, setCopied] = useState(false);
+  const qrRef = useRef(null);
+  const [qrState, setQrState] = useState(""); // "" | "copied" | "saved" | "error"
+  const qrFileName = `qr-${guest.name.replace(/\s+/g, "_")}.png`;
+  // Used only to draw the QR image. Never shown or sent as text.
+  const qrValue = `${SITE_URL}/?token=${encodeURIComponent(guest.token)}`;
+
+  const handleQrCopy = async () => {
+    const ok = await copyCanvasImage(qrRef.current && qrRef.current.querySelector("canvas"));
+    setQrState(ok ? "copied" : "error");
+    setTimeout(() => setQrState(""), 2000);
+  };
+  const handleQrDownload = () => {
+    downloadCanvas(qrRef.current && qrRef.current.querySelector("canvas"), qrFileName);
+    setQrState("saved");
+    setTimeout(() => setQrState(""), 2000);
+  };
 
   const handleCopyEmail = async (e) => {
     e.stopPropagation();
