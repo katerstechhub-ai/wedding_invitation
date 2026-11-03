@@ -452,6 +452,9 @@ function MessageModal({ guest, onClose }) {
           padding: 26,
           maxWidth: 400,
           width: "100%",
+          maxHeight: "92vh",
+          overflowY: "auto",
+          boxSizing: "border-box",
           boxShadow: "0 30px 60px rgba(0,0,0,0.25)",
           position: "relative",
         }}
@@ -476,10 +479,12 @@ function MessageModal({ guest, onClose }) {
           ×
         </button>
 
-        <p style={{ fontWeight: 700, fontSize: 18, color: T.ink, margin: 0 }}>{guest.name}</p>
+        <p style={{ fontWeight: 700, fontSize: 18, color: T.ink, margin: 0, paddingRight: 36, overflowWrap: "anywhere" }}>
+          {guest.name}
+        </p>
         {guest.email && (
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
-            <p style={{ fontSize: 12, color: T.sub, margin: 0 }}>{guest.email}</p>
+            <p style={{ fontSize: 12, color: T.sub, margin: 0, overflowWrap: "anywhere" }}>{guest.email}</p>
             <button
               onClick={handleCopyEmail}
               aria-label="Copy email"
@@ -519,13 +524,18 @@ function MessageModal({ guest, onClose }) {
             color: T.ink,
             lineHeight: 1.55,
             whiteSpace: "pre-wrap",
+            overflowWrap: "anywhere",
+            wordBreak: "break-word",
+            maxHeight: "40vh",
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
           }}
         >
           {guest.rsvpMessage || "No message left."}
         </div>
 
         {guest.email && (
-          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
             <MailButtons to={guest.email} bcc="" subject={MAIL_SUBJECT} body={replyBody} />
           </div>
         )}
@@ -618,6 +628,9 @@ function QrModal({ guest, onClose }) {
           textAlign: "center",
           maxWidth: 340,
           width: "100%",
+          maxHeight: "92vh",
+          overflowY: "auto",
+          boxSizing: "border-box",
           boxShadow: "0 30px 60px rgba(0,0,0,0.25)",
           position: "relative",
         }}
@@ -671,7 +684,9 @@ function QrModal({ guest, onClose }) {
         >
           <QRCodeCanvas value={guestUrl} size={220} bgColor={T.soft} fgColor={T.ink} />
         </div>
-        <p style={{ marginTop: 16, fontWeight: 700, fontSize: 16, color: T.ink }}>{guest.name}</p>
+        <p style={{ marginTop: 16, fontWeight: 700, fontSize: 16, color: T.ink, overflowWrap: "anywhere" }}>
+          {guest.name}
+        </p>
         <p
           style={{
             fontSize: 11,
@@ -688,7 +703,7 @@ function QrModal({ guest, onClose }) {
           This QR code can be used only once. The share message tells the guest so.
         </p>
 
-        <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 18 }}>
+        <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 18, flexWrap: "wrap" }}>
           <button
             onClick={handleShare}
             disabled={shareState === "sharing"}
@@ -820,7 +835,7 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
                   />
                 </td>
                 <td style={{ padding: "12px", color: T.sub }}>{i + 1}</td>
-                <td style={{ padding: "12px", color: T.ink, fontWeight: 600 }}>
+                <td style={{ padding: "12px", color: T.ink, fontWeight: 600, overflowWrap: "anywhere" }}>
                   {g.name}
                   <DupTag guest={g} dups={dups} />
                   {groupsMap[g._id] && (
