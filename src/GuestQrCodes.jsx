@@ -7,12 +7,9 @@ const API_BASE =
 const ADMIN_KEY_STORAGE = "mediahub_wedding_admin_key";
 const GROUPS_STORAGE = "mediahub_wedding_guest_groups";
 
-// Shown to every guest together with their QR code.
 const ONE_TIME_NOTE =
   "Please note: this QR code can be used only once — it is scanned at the entrance and will not work a second time. Do not share it with anyone else.";
 
-// Text to paste into a WhatsApp group: one guest name per line.
-// Personal QR links are only sent in the individual email, not bulk text.
 function formatGuestList(list) {
   return list.map((g, i) => `${i + 1}. ${g.name}`).join("\n");
 }
@@ -93,14 +90,66 @@ function findDuplicateNames(guests) {
 function guestTag(g) {
   return g.email || (g.token ? "ref " + String(g.token).slice(-4) : "");
 }
-function DupTag({ guest, dups }) {
-  if (!dups[guest.name.trim().toLowerCase()]) return null;
-  const tag = guestTag(guest);
-  if (!tag) return null;
+
+// ── Mobile detection hook ───────────────────────────────────
+function useIsMobile(breakpoint = 640) {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < breakpoint
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const onChange = () => setIsMobile(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, [breakpoint]);
+  return isMobile;
+}
+
+// ── Scroll to top button ────────────────────────────────────
+function ScrollToTop() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 400);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const handleClick = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  if (!visible) return null;
+
   return (
-    <span style={{ display: "block", marginTop: 2, fontSize: 11, fontWeight: 500, color: T.warn }}>
-      same name · {tag}
-    </span>
+    <button
+      onClick={handleClick}
+      aria-label="Back to top"
+      style={{
+        position: "fixed",
+        right: 18,
+        bottom: 90,
+        width: 46,
+        height: 46,
+        borderRadius: 999,
+        border: "none",
+        background: T.dark,
+        color: "#fff",
+        cursor: "pointer",
+        boxShadow: "0 6px 18px rgba(0,0,0,0.28)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 850,
+        transition: "opacity .2s, transform .2s",
+      }}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 19V5M5 12l7-7 7 7" />
+      </svg>
+    </button>
   );
 }
 
@@ -320,6 +369,7 @@ function Pill({ children, tone = "muted" }) {
         background: c.bg,
         color: c.fg,
         letterSpacing: 0.2,
+        whiteSpace: "nowrap",
       }}
     >
       {children}
@@ -424,8 +474,6 @@ function MessageModal({ guest, onClose }) {
     }
   };
 
-  // Reply email now contains a real working link the guest can open to see
-  // their own QR code. This is the only reliable way to deliver it via email.
   const qrLink = `${SITE_URL}/#qr/${encodeURIComponent(guest.token)}`;
   const replyBody = `Hi ${guest.name},\n\nThank you for your RSVP — we're so happy you'll be celebrating with us!\n\nHere's your personal QR code for entry:\n${qrLink}\n\nOpen the link at the entrance, or open it now and save the QR image to your phone.\n\n${ONE_TIME_NOTE}\n\nWarm regards`;
 
@@ -457,6 +505,7 @@ function MessageModal({ guest, onClose }) {
           boxSizing: "border-box",
           boxShadow: "0 30px 60px rgba(0,0,0,0.25)",
           position: "relative",
+          WebkitOverflowScrolling: "touch",
         }}
       >
         <button
@@ -633,6 +682,7 @@ function QrModal({ guest, onClose }) {
           boxSizing: "border-box",
           boxShadow: "0 30px 60px rgba(0,0,0,0.25)",
           position: "relative",
+          WebkitOverflowScrolling: "touch",
         }}
       >
         <button
@@ -745,9 +795,177 @@ function QrModal({ guest, onClose }) {
   );
 }
 
-// ── Guest table ─────────────────────────────────────────────
-function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage, busyId, emptyMessage, selected, onToggleSelect, onToggleAll, groupsMap }) {
+// ── Bottom Sheet (mobile actions) ──────────────────────────
+function ActionSheet({ guest, onClose, onToggleArrived, onDelete, onOpenQr, onOpenMessage, busyId }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(20,20,10,0.45)",
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "center",
+        zIndex: 1000,
+        backdropFilter: "blur(4px)",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: T.card,
+          borderTopLeftRadius: 22,
+          borderTopRightRadius: 22,
+          padding: 22,
+          paddingBottom: "calc(22px + env(safe-area-inset-bottom))",
+          width: "100%",
+          maxWidth: 480,
+          boxShadow: "0 -10px 40px rgba(0,0,0,0.25)",
+          animation: "slideUp .2s ease-out",
+        }}
+      >
+        <div
+          style={{
+            width: 40,
+            height: 4,
+            borderRadius: 999,
+            background: T.line,
+            margin: "0 auto 16px",
+          }}
+        />
+        <p style={{ fontWeight: 700, fontSize: 17, color: T.ink, margin: "0 0 4px", overflowWrap: "anywhere" }}>
+          {guest.name}
+        </p>
+        <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
+          <Pill tone={toneFor(guest.attending)}>{guest.attending || "no RSVP"}</Pill>
+          <Pill tone={guestTypeTone(guest.guestType)}>{guestTypeLabel(guest.guestType)}</Pill>
+          {guest.arrivalTime && (
+            <Pill tone="good">arrived {new Date(guest.arrivalTime).toLocaleTimeString()}</Pill>
+          )}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <button
+            onClick={() => {
+              onOpenQr(guest);
+              onClose();
+            }}
+            style={{
+              padding: "14px 18px",
+              borderRadius: 14,
+              border: "none",
+              background: T.dark,
+              color: "#fff",
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            View QR code
+          </button>
+
+          <button
+            onClick={() => {
+              onOpenMessage(guest);
+              onClose();
+            }}
+            style={{
+              padding: "14px 18px",
+              borderRadius: 14,
+              border: "none",
+              background: T.soft,
+              color: T.ink,
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            View RSVP message
+          </button>
+
+          <button
+            onClick={() => {
+              onToggleArrived(guest._id);
+            }}
+            disabled={busyId === guest._id}
+            style={{
+              padding: "14px 18px",
+              borderRadius: 14,
+              border: "none",
+              background: guest.arrived ? T.warnBg : T.goodBg,
+              color: guest.arrived ? T.warn : T.good,
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: busyId === guest._id ? "default" : "pointer",
+              textAlign: "left",
+            }}
+          >
+            {guest.arrived ? "Mark as not arrived" : "Mark as arrived"}
+          </button>
+
+          <button
+            onClick={() => {
+              onDelete(guest._id);
+              onClose();
+            }}
+            disabled={busyId === guest._id}
+            style={{
+              padding: "14px 18px",
+              borderRadius: 14,
+              border: "none",
+              background: T.badBg,
+              color: T.bad,
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            Remove guest
+          </button>
+
+          <button
+            onClick={onClose}
+            style={{
+              padding: "14px 18px",
+              borderRadius: 14,
+              border: "none",
+              background: T.soft,
+              color: T.sub,
+              fontSize: 15,
+              fontWeight: 600,
+              cursor: "pointer",
+              marginTop: 4,
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Guest table (responsive) ───────────────────────────────
+function GuestTable({
+  guests,
+  onToggleArrived,
+  onDelete,
+  onOpenQr,
+  onOpenMessage,
+  busyId,
+  emptyMessage,
+  selected,
+  onToggleSelect,
+  onToggleAll,
+  groupsMap,
+}) {
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [sheetGuest, setSheetGuest] = useState(null);
+  const isMobile = useIsMobile();
 
   if (guests.length === 0)
     return (
@@ -761,37 +979,244 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
   const allSelected = guests.every((g) => selected.has(g._id));
   const dups = findDuplicateNames(guests);
 
-  return (
-    <div style={{ marginTop: 20 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 14,
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <h2 style={{ color: T.ink, fontSize: 18, margin: 0, fontWeight: 700 }}>Guest List</h2>
-          <p style={{ margin: 0, color: T.sub, fontSize: 12 }}>
-            {arrivedCount} of {guests.length} arrived
-          </p>
-        </div>
-        <div style={{ flex: "1 1 180px", maxWidth: 260 }}>
-          <div style={{ height: 8, background: T.soft, borderRadius: 999, overflow: "hidden" }}>
-            <div
-              style={{
-                width: `${pct}%`,
-                height: "100%",
-                background: T.accent,
-                transition: "width .3s",
-              }}
-            />
-          </div>
+  const deleteModal = pendingDelete && (
+    <ConfirmModal
+      title={`Remove ${pendingDelete.name}?`}
+      body="This can't be undone."
+      confirmLabel="Remove"
+      onCancel={() => setPendingDelete(null)}
+      onConfirm={() => {
+        onDelete(pendingDelete._id);
+        setPendingDelete(null);
+      }}
+    />
+  );
+
+  // ── Progress header (shared) ─────────────────────────────
+  const ProgressHeader = () => (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 14,
+        gap: 12,
+        flexWrap: "wrap",
+      }}
+    >
+      <div>
+        <h2 style={{ color: T.ink, fontSize: 18, margin: 0, fontWeight: 700 }}>Guest List</h2>
+        <p style={{ margin: 0, color: T.sub, fontSize: 12 }}>
+          {arrivedCount} of {guests.length} arrived
+        </p>
+      </div>
+      <div style={{ flex: "1 1 140px", maxWidth: 260 }}>
+        <div style={{ height: 8, background: T.soft, borderRadius: 999, overflow: "hidden" }}>
+          <div
+            style={{
+              width: `${pct}%`,
+              height: "100%",
+              background: T.accent,
+              transition: "width .3s",
+            }}
+          />
         </div>
       </div>
+    </div>
+  );
+
+  // ── Mobile: compact 4-column table ───────────────────────
+  if (isMobile) {
+    return (
+      <div style={{ marginTop: 20 }}>
+        <ProgressHeader />
+
+        <div
+          style={{
+            background: T.card,
+            borderRadius: 14,
+            overflow: "hidden",
+            border: `1px solid ${T.line}`,
+          }}
+        >
+          {/* Sticky header */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "34px 1fr auto auto",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 12px",
+              background: T.soft,
+              fontSize: 10,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: 0.6,
+              color: T.sub,
+              position: "sticky",
+              top: 0,
+              zIndex: 2,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={() => onToggleAll(guests)}
+              aria-label="Select all shown guests"
+              style={{ width: 18, height: 18, accentColor: T.accent, cursor: "pointer" }}
+            />
+            <span>Guest</span>
+            <span style={{ textAlign: "center", minWidth: 60 }}>RSVP</span>
+            <span style={{ textAlign: "right", minWidth: 44 }}>·</span>
+          </div>
+
+          {/* Rows */}
+          {guests.map((g) => (
+            <div
+              key={g._id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "34px 1fr auto auto",
+                alignItems: "center",
+                gap: 8,
+                padding: "12px",
+                borderTop: `1px solid ${T.line}`,
+                background: g.arrived ? T.goodBg : T.card,
+                opacity: busyId === g._id ? 0.5 : 1,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={selected.has(g._id)}
+                onChange={() => onToggleSelect(g._id)}
+                aria-label={`Select ${g.name}`}
+                style={{ width: 20, height: 20, accentColor: T.accent, cursor: "pointer" }}
+              />
+
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontWeight: 700,
+                    color: T.ink,
+                    fontSize: 14,
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {g.name}
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 4,
+                    marginTop: 3,
+                    alignItems: "center",
+                  }}
+                >
+                  <Pill tone={guestTypeTone(g.guestType)}>{guestTypeLabel(g.guestType)}</Pill>
+                  {dups[g.name.trim().toLowerCase()] && guestTag(g) && (
+                    <span style={{ fontSize: 10, fontWeight: 500, color: T.warn }}>
+                      same name · {guestTag(g)}
+                    </span>
+                  )}
+                  {groupsMap[g._id] && (
+                    <span style={{ fontSize: 10, fontWeight: 500, color: T.sub }}>
+                      {groupsMap[g._id]}
+                    </span>
+                  )}
+                  {g.arrived && g.arrivalTime && (
+                    <span style={{ fontSize: 10, fontWeight: 500, color: T.good }}>
+                      ✓ {new Date(g.arrivalTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={() => onOpenMessage(g)}
+                style={{
+                  border: "none",
+                  background: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  minWidth: 60,
+                  display: "flex",
+                  justifyContent: "center",
+                }}
+              >
+                <Pill tone={toneFor(g.attending)}>{g.attending || "—"}</Pill>
+              </button>
+
+              <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                <button
+                  onClick={() => onOpenQr(g)}
+                  aria-label="View QR"
+                  style={{
+                    border: "none",
+                    background: T.dark,
+                    color: "#fff",
+                    borderRadius: 8,
+                    padding: "8px 10px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    minHeight: 36,
+                    minWidth: 36,
+                  }}
+                >
+                  QR
+                </button>
+                <button
+                  onClick={() => setSheetGuest(g)}
+                  aria-label="More actions"
+                  style={{
+                    border: "none",
+                    background: T.soft,
+                    color: T.ink,
+                    borderRadius: 8,
+                    padding: "8px 10px",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    minHeight: 36,
+                    minWidth: 36,
+                    lineHeight: 1,
+                  }}
+                >
+                  ⋯
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {sheetGuest && (
+          <ActionSheet
+            guest={sheetGuest}
+            onClose={() => setSheetGuest(null)}
+            onToggleArrived={(id) => {
+              onToggleArrived(id);
+            }}
+            onDelete={(id) => {
+              setPendingDelete(sheetGuest);
+            }}
+            onOpenQr={onOpenQr}
+            onOpenMessage={onOpenMessage}
+            busyId={busyId}
+          />
+        )}
+
+        {deleteModal}
+      </div>
+    );
+  }
+
+  // ── Desktop: full table ──────────────────────────────────
+  return (
+    <div style={{ marginTop: 20 }}>
+      <ProgressHeader />
 
       <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 14 }}>
@@ -837,7 +1262,11 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
                 <td style={{ padding: "12px", color: T.sub }}>{i + 1}</td>
                 <td style={{ padding: "12px", color: T.ink, fontWeight: 600, overflowWrap: "anywhere" }}>
                   {g.name}
-                  <DupTag guest={g} dups={dups} />
+                  {dups[g.name.trim().toLowerCase()] && guestTag(g) && (
+                    <span style={{ display: "block", marginTop: 2, fontSize: 11, fontWeight: 500, color: T.warn }}>
+                      same name · {guestTag(g)}
+                    </span>
+                  )}
                   {groupsMap[g._id] && (
                     <span style={{ display: "block", marginTop: 2, fontSize: 11, fontWeight: 500, color: T.sub }}>
                       {groupsMap[g._id]}
@@ -909,22 +1338,20 @@ function GuestTable({ guests, onToggleArrived, onDelete, onOpenQr, onOpenMessage
         </table>
       </div>
 
-      {pendingDelete && (
-        <ConfirmModal
-          title={`Remove ${pendingDelete.name}?`}
-          body="This can't be undone."
-          confirmLabel="Remove"
-          onCancel={() => setPendingDelete(null)}
-          onConfirm={() => {
-            onDelete(pendingDelete._id);
-            setPendingDelete(null);
-          }}
-        />
-      )}
+      {deleteModal}
     </div>
   );
 }
 
+// ── Slide-up animation ─────────────────────────────────────
+const globalStyles = `
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+`;
+
+// ── Main component ─────────────────────────────────────────
 export default function GuestQrCodes() {
   const [quickName, setQuickName] = useState("");
   const [bulkText, setBulkText] = useState("");
@@ -958,6 +1385,16 @@ export default function GuestQrCodes() {
   const [selected, setSelected] = useState(() => new Set());
   const [copied, setCopied] = useState("");
   const [inviteCopied, setInviteCopied] = useState("");
+
+  // Inject keyframes once
+  useEffect(() => {
+    const styleId = "guest-qr-animations";
+    if (document.getElementById(styleId)) return;
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = globalStyles;
+    document.head.appendChild(style);
+  }, []);
 
   useEffect(() => {
     try {
@@ -1223,7 +1660,17 @@ export default function GuestQrCodes() {
   };
 
   return (
-    <div style={{ background: T.bg, minHeight: "100vh", fontFamily: T.font, padding: "28px 16px" }}>
+    <div
+      style={{
+        background: T.bg,
+        minHeight: "100vh",
+        fontFamily: T.font,
+        padding: "28px 16px",
+        // Extra bottom room when selection bar is showing
+        paddingBottom: selectedGuests.length > 0 ? 120 : 28,
+        transition: "padding-bottom .2s",
+      }}
+    >
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         {/* Header */}
         <div
@@ -1444,6 +1891,7 @@ export default function GuestQrCodes() {
                 background: T.soft,
                 fontSize: 14,
                 outline: "none",
+                minWidth: 0,
               }}
             />
             <button
@@ -1457,6 +1905,7 @@ export default function GuestQrCodes() {
                 color: T.accentInk,
                 fontWeight: 600,
                 cursor: canUse ? "pointer" : "not-allowed",
+                flexShrink: 0,
               }}
             >
               Add
@@ -1545,39 +1994,51 @@ export default function GuestQrCodes() {
           ) : (
             <>
               {guests.length > 0 && (
-                <div style={{ position: "relative", marginTop: 18 }}>
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: 14,
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      display: "flex",
-                    }}
-                  >
-                    <SearchIcon />
+                <div
+                  style={{
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 6,
+                    background: T.card,
+                    paddingTop: 10,
+                    paddingBottom: 10,
+                    marginTop: 8,
+                  }}
+                >
+                  <div style={{ position: "relative" }}>
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: 14,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        display: "flex",
+                      }}
+                    >
+                      <SearchIcon />
+                    </div>
+                    <input
+                      type="text"
+                      value={tableSearch}
+                      onChange={(e) => setTableSearch(e.target.value)}
+                      placeholder="Search guests by name…"
+                      style={{
+                        width: "100%",
+                        padding: "12px 14px 12px 38px",
+                        borderRadius: 999,
+                        border: "none",
+                        background: T.soft,
+                        fontSize: 14,
+                        color: T.ink,
+                        boxSizing: "border-box",
+                        outline: "none",
+                      }}
+                    />
                   </div>
-                  <input
-                    type="text"
-                    value={tableSearch}
-                    onChange={(e) => setTableSearch(e.target.value)}
-                    placeholder="Search guests by name…"
-                    style={{
-                      width: "100%",
-                      padding: "12px 14px 12px 38px",
-                      borderRadius: 999,
-                      border: "none",
-                      background: T.soft,
-                      fontSize: 14,
-                      color: T.ink,
-                      boxSizing: "border-box",
-                      outline: "none",
-                    }}
-                  />
                 </div>
               )}
               {groupNames.length > 0 && (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14, alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6, alignItems: "center" }}>
                   <span style={{ fontSize: 11, color: T.sub, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase" }}>
                     Groups
                   </span>
@@ -1629,6 +2090,10 @@ export default function GuestQrCodes() {
         </Card>
       </div>
 
+      {/* Back to top — always available when scrolled */}
+      <ScrollToTop />
+
+      {/* Selection bar */}
       {selectedGuests.length > 0 && (
         <div
           style={{
