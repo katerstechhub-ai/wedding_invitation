@@ -1025,7 +1025,7 @@ function GuestTable({
     </div>
   );
 
-  // ── Mobile: compact 4-column table ───────────────────────
+  // ── Mobile: compact 5-column table ───────────────────────
   if (isMobile) {
     return (
       <div style={{ marginTop: 20 }}>
@@ -1043,9 +1043,9 @@ function GuestTable({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "34px 1fr auto auto",
+              gridTemplateColumns: "26px 22px 1fr auto auto",
               alignItems: "center",
-              gap: 8,
+              gap: 6,
               padding: "10px 12px",
               background: T.soft,
               fontSize: 10,
@@ -1065,20 +1065,21 @@ function GuestTable({
               aria-label="Select all shown guests"
               style={{ width: 18, height: 18, accentColor: T.accent, cursor: "pointer" }}
             />
+            <span style={{ textAlign: "right" }}>#</span>
             <span>Guest</span>
             <span style={{ textAlign: "center", minWidth: 60 }}>RSVP</span>
             <span style={{ textAlign: "right", minWidth: 44 }}>·</span>
           </div>
 
           {/* Rows */}
-          {guests.map((g) => (
+          {guests.map((g, i) => (
             <div
               key={g._id}
               style={{
                 display: "grid",
-                gridTemplateColumns: "34px 1fr auto auto",
+                gridTemplateColumns: "26px 22px 1fr auto auto",
                 alignItems: "center",
-                gap: 8,
+                gap: 6,
                 padding: "12px",
                 borderTop: `1px solid ${T.line}`,
                 background: g.arrived ? T.goodBg : T.card,
@@ -1092,6 +1093,18 @@ function GuestTable({
                 aria-label={`Select ${g.name}`}
                 style={{ width: 20, height: 20, accentColor: T.accent, cursor: "pointer" }}
               />
+
+              <span
+                style={{
+                  color: T.sub,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  textAlign: "right",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {i + 1}
+              </span>
 
               <div style={{ minWidth: 0 }}>
                 <div
@@ -1666,7 +1679,6 @@ export default function GuestQrCodes() {
         minHeight: "100vh",
         fontFamily: T.font,
         padding: "28px 16px",
-        // Extra bottom room when selection bar is showing
         paddingBottom: selectedGuests.length > 0 ? 120 : 28,
         transition: "padding-bottom .2s",
       }}
